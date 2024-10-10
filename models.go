@@ -39,6 +39,8 @@ type Job struct {
     Value         string  `json:"Value"`
 }
 
+
+
 type Peer struct {
     DNS                 string          `json:"DNS"`
     ShareLink           []interface{}   `json:"ShareLink"`
@@ -79,6 +81,25 @@ type Response struct {
 type Consumer struct{
   ChatID uint64
   Peers []Peer
+}
+
+type PeerCfg struct{
+  PublicKey string
+  AllowedIPs string
+  Endpoint string
+  PersistentKeepalive string
+}
+
+type InterfaceCfg struct{
+  PublicKey string
+  Address string
+  MTU string
+  DNS string
+}
+
+type WgConfig struct{
+  Interface InterfaceCfg
+  Peer PeerCfg
 }
 
 var response Response

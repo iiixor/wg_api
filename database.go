@@ -43,7 +43,7 @@ func CreateDbs() error {
     lg.Printf("Failed to open db %s: %s", dbName, err)
     return err
   }
-  err = db.AutoMigrate(&ConsGorm{}, &PeerGorm{})
+  err = db.AutoMigrate(&ConsGorm{}, &PeerGorm{}, &InterfaceGorm{})
   if err != nil {
     lg.Printf("Failed to migrate schema %s", err)
     return err
@@ -89,6 +89,18 @@ func AddPeerToORM(peer PeerGorm) error {
   return nil
 }
 
+func AddInterfaceToORM(inter InterfaceGorm) error{
+  dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable", host, user, password, dbName)
+  db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+  if err != nil{
+    lg.Printf("Failed to open db %s: %s", dbName, err)
+    return err
+  }
+db.Create(&inter)
+lg.Printf("%s was successfully added to %s", inter.Name, db.Name())
+return nil
+}
+
 func DeletePeerFromORM(peer PeerGorm) error {
   dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable", host, user, password, dbName)
   db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -109,8 +121,21 @@ func GetConsumerInfoDB(consumer ConsGorm) (ConsGorm, error) {
     lg.Printf("Failed to open db %s: %s", dbName, err)
     return ConsGorm{},err
   }
-
-  db.Model(ConsGorm{ChatID: consumer.ChatID}).First(res)
-  // db.Find(&consumer, "chatid = ?", consumer.ChatID)
+  db.Where("chat_id=?", consumer.ChatID).Find(&res)
   return res,nil
 }
+
+func GetVacantPeerFromORM() (PeerGorm, error) {
+  var vacantPeer PeerGorm
+  dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable", host, user, password, dbName)
+  db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+  if err != nil{
+    lg.Printf("Failed to open db %s: %s", dbName, err)
+    return PeerGorm{}, err
+  }
+  db.Where("status <> ?", "Paid").First(&vacantPeer)
+  vacantPeer.Status = "Paid"
+  db.Save(&vacantPeer)
+  return vacantPeer,nil
+}
+

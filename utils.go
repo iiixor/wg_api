@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"golang.org/x/crypto/curve25519"
+	"crypto/rand"
+	"encoding/base64"
 )
 
 func readPeersInfoJSON(filePath string){
@@ -48,4 +51,30 @@ func DeletePeer(userID uint64, peerName string){
     }
   }
   lg.Printf("Peer %s belonged to user %s was deleted!", peerName, userID)
+}
+func generateKeys() (string, string, error) {
+	// Создаем 32 байта для приватного ключа
+	var privateKey [32]byte
+	_, err := rand.Read(privateKey[:])
+	if err != nil {
+		return "", "", err
+	}
+
+	// Генерация публичного ключа на основе приватного
+	var publicKey [32]byte
+	curve25519.ScalarBaseMult(&publicKey, &privateKey)
+
+	// Преобразуем в base64
+	privKeyStr := base64.StdEncoding.EncodeToString(privateKey[:])
+	pubKeyStr := base64.StdEncoding.EncodeToString(publicKey[:])
+
+	return privKeyStr, pubKeyStr, nil
+}
+
+func readfile(filePath string) string{
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		lg.Fatalf("Failed to open %s: %v", filePath, err)
+	}
+  return string(data)
 }
