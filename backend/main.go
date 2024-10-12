@@ -1,24 +1,16 @@
 package main
 
 func main(){
-  readPeersInfoJSON("./peers.json")
-  lg.Println("All peers are read succesfully!")
-  // initDB()
-  // for i:=0; i < 3;i++{
-  //   AddUserPeers(145145145)
+  // err := CreateDbs()
+  // if err != nil{
+  //   lg.Fatalf("Failed to create tables in psql: %s", err)
   // }
-  // vacantPeer := GetAvailablePeer()
-  // if vacantPeer.AllowedIP == ""{
-  //   lg.Println("No vacant peers!")
-  //   return
-  // }
-  // lg.Println(vacantPeer)
+  // lg.Println("Tables are created successfully!")
 
-  // initDB()
+  // var testCons ConsGorm
   //
-  // privateKey, publicKey,_ := generateKeys()
-  // lg.Printf("%s\n%s", privateKey, publicKey)
-  // initWgConf()
-  generatePeers()
-  // initServer()
+  // testCons.ChatID = "146146146"
+  // testCons.Username = "@egrmk"
+  // grantConsumerPeer(testCons)
+  initServer()
 }

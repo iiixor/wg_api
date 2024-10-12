@@ -1,9 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
-  "bytes"
-  "encoding/json"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -12,8 +12,12 @@ import (
 func initServer(){
   r := chi.NewRouter()
   r.Use(middleware.Logger)
-  r.Get("/GetConsumerInfo/{ChatID}", GetConsumerInfoAPI)
+  r.Get("/GetConsumerInfo/?={ChatID}", GetConsumerInfoAPI)
   r.Get("/GetVacantPeer/", GetVacantPeerAPI)
+  r.Get("/GrantPeerToConsumer/{ChatID}+{Username}", GrantPeerToConsumerAPI)
+  r.Get("/Init/ReadWgCreds", ReadWgCredsAPI)
+  r.Get("/Init/GenAndWritePeers", GenAndWritePeersAPI)
+  r.Get("/GiveLastCfg/{ChatID}", GiveLastPaidPeerAPI)
   r.Get("/", func(w http.ResponseWriter, r *http.Request) {
       w.Write([]byte("Hello World!"))
   })
@@ -68,6 +72,70 @@ func GetVacantPeerAPI(w http.ResponseWriter, r *http.Request){
   }
   DrawJSON(w, vacantPeer, 200)
   lg.Printf("Vacant peer: %s", vacantPeer.Name)
-
 }
 
+func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request){
+  var consumer ConsGorm
+  consumer.ChatID = chi.URLParam(r, "ChatID")
+  consumer.Username = chi.URLParam(r, "Username")
+  // var resCons ConsGorm
+  var resPeer PeerGorm
+  _,resPeer, err := grantConsumerPeer(consumer)
+  if err != nil{
+    lg.Println("Failed to grant peer to consumer!")
+    w.WriteHeader(422)
+    w.Write([]byte(err.Error()))
+    return
+  }
+  inter, err := GetInterfaceInfoFromORM()
+  if err != nil{
+    lg.Printf("Failed to get interface info:%s", err)
+  }
+  var clientCfg WgConfig
+  clientCfg = createClientConfig(inter, resPeer)
+  DrawJSON(w, clientCfg, 200)
+  // w.WriteHeader(200)
+  // w.Write([]byte(fmt.Sprintf("UserID: %s was granted peer %d", consumer.ChatID, peerID)))
+}
+
+func ReadWgCredsAPI(w http.ResponseWriter, r *http.Request){
+  err := ReadWGCreds()
+  if err != nil{
+    lg.Printf("Failed to read wg creds: %s", err)
+    w.WriteHeader(422)
+    w.Write([]byte(err.Error()))
+    return
+  }
+  w.WriteHeader(200)
+  w.Write([]byte("Wireguard creds are successfully read!"))
+}
+
+func GenAndWritePeersAPI(w http.ResponseWriter, r *http.Request) {
+  err := GenAndWritePeers()
+  if err != nil{
+    lg.Printf("Failed to generate and write peers: %s", err)
+    w.WriteHeader(422)
+    w.Write([]byte(err.Error()))
+  }
+  w.WriteHeader(200)
+  w.Write([]byte("Peers generated and written successfully!"))
+}
+
+func GiveLastPaidPeerAPI(w http.ResponseWriter, r *http.Request) {
+  var consumer ConsGorm
+  consumer.ChatID = chi.URLParam(r, "ChatID")
+  var resPeer PeerGorm
+  _, resPeer, err := GiveLastPaidPeer(consumer)
+  if err != nil{
+    lg.Printf("Failed to find last paid peer!: %s", err)
+    w.WriteHeader(422)
+    w.Write([]byte("Failed to find last paid peer!"))
+  }
+  inter, err := GetInterfaceInfoFromORM()
+  if err != nil{
+    lg.Printf("Failed to get interface info:%s", err)
+  }
+  var clientCfg WgConfig
+  clientCfg = createClientConfig(inter, resPeer)
+  DrawJSON(w, clientCfg, 200)
+}

@@ -91,7 +91,7 @@ type PeerCfg struct{
 }
 
 type InterfaceCfg struct{
-  PublicKey string
+  PrivateKey string
   Address string
   MTU string
   DNS string

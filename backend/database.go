@@ -48,20 +48,6 @@ func CreateDbs() error {
     lg.Printf("Failed to migrate schema %s", err)
     return err
   }
-  // db.Create(&PeerGorm{
-  //   Name: "Egr_kali",
-  //   PrivateKey: "UB4+uUtrfbhtIOZJo+gh88QcAyOL+y8rngQzK7i6kEY=",
-  //   PublicKey: "J2x2ka2YtDnSFPVXe2ze3sz5/tsbiFcPXEjSMOBOEn4=",
-  //   RemoteEndpoint: "127.0.0.1",
-  //   LatestHandshake: time.Now(),
-  //   PaidTime: time.Now(),
-  //   ExpirationTome: time.Now()})
-
-  // db.Create(&ConsGorm{
-  //   ChatID: 145145145,
-  //   Username: "@egrmk",
-  //   Name: "Egor",
-  //   Surname: "Romanenko",})
   return nil
 }
 
@@ -96,9 +82,9 @@ func AddInterfaceToORM(inter InterfaceGorm) error{
     lg.Printf("Failed to open db %s: %s", dbName, err)
     return err
   }
-db.Create(&inter)
-lg.Printf("%s was successfully added to %s", inter.Name, db.Name())
-return nil
+  db.Create(&inter)
+  lg.Printf("%s was successfully added to %s", inter.Name, db.Name())
+  return nil
 }
 
 func DeletePeerFromORM(peer PeerGorm) error {
@@ -135,11 +121,12 @@ func GetVacantPeerFromORM() (PeerGorm, error) {
   }
   db.Where("status <> ?", "Paid").First(&vacantPeer)
   vacantPeer.Status = "Paid"
+  vacantPeer.ExpirationTime = time.Now().AddDate(0, 1, 0)
   db.Save(&vacantPeer)
   return vacantPeer,nil
 }
 
-func GetInterfaceInfoFromORM(id uint) (InterfaceGorm, error){
+func GetInterfaceInfoFromORM() (InterfaceGorm, error){
   var inter InterfaceGorm
   dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable", host, user, password, dbName)
   db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -147,6 +134,43 @@ func GetInterfaceInfoFromORM(id uint) (InterfaceGorm, error){
     lg.Printf("Failed to open db %s: %s", dbName, err)
     return InterfaceGorm{}, err
   }
-  db.Where("id = ?",id).First(&inter)
+  db.Last(&inter)
   return inter, nil
+}
+
+func writePeersToORM(peers []PeerGorm) error {
+  dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable", host, user, password, dbName)
+  db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+  if err != nil{
+    lg.Printf("Failed to open db %s: %s", dbName, err)
+    return err
+  }
+  db.Create(peers)
+  return nil
+}
+
+func grantConsumerPeerInORM(cons ConsGorm, peer PeerGorm) (ConsGorm,PeerGorm, error){
+  dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable", host, user, password, dbName)
+  db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+  if err != nil{
+    lg.Printf("Failed to open db %s: %s", dbName, err)
+    return ConsGorm{},PeerGorm{}, err
+  }
+  cons.PeerID = uint32(peer.ID)
+  db.Save(&cons)
+  return cons, peer, nil
+}
+
+func GiveLastPaidPeerFromORM(cons ConsGorm) (ConsGorm,PeerGorm, error){
+  dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable", host, user, password, dbName)
+  db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+  if err != nil{
+    lg.Printf("Failed to open db %s: %s", dbName, err)
+    return ConsGorm{},PeerGorm{}, err
+  }
+  var resCons ConsGorm
+  var resPeer PeerGorm
+  db.Where("chat_id = ?", cons.ChatID).Last(&resCons)
+  db.Where("id = ?", resCons.PeerID).First(&resPeer)
+  return resCons, resPeer, nil
 }

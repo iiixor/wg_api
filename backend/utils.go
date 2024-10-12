@@ -94,21 +94,15 @@ func generatePeers() []PeerGorm{
     peersArray[i].AllowedIP = fmt.Sprintf("10.0.0.%d/32", i+1)
     peersArray[i].Status = "Virgin"
     peersArray[i].InterfaceID = 1
-    lg.Printf("Name:%s", peersArray[i].Name)
-    lg.Printf("PubKey:%s", peersArray[i].PublicKey)
-    lg.Printf("PrivateKey:%s", peersArray[i].PrivateKey)
-    lg.Printf("AllowedIP:%s", peersArray[i].AllowedIP)
-    lg.Printf("Status:%s", peersArray[i].Status)
-    lg.Printf("InterfaceID:%d\n\n", peersArray[i].InterfaceID)
+    // lg.Printf("Name:%s", peersArray[i].Name)
+    // lg.Printf("PubKey:%s", peersArray[i].PublicKey)
+    // lg.Printf("PrivateKey:%s", peersArray[i].PrivateKey)
+    // lg.Printf("AllowedIP:%s", peersArray[i].AllowedIP)
+    // lg.Printf("Status:%s", peersArray[i].Status)
+    // lg.Printf("InterfaceID:%d\n\n", peersArray[i].InterfaceID)
     // lg.Printf("Name: %s\nPublicKey:%s\nPrivateKey:%s\nAllowedIP:%s\nStatus:%s\nInterfaceID:%s", pe)
     // lg.Println(peersArray[i])
   }
   return peersArray
 }
 
-func writePeersIntoWgConf(filePath string,peers []PeerGorm){
-  file, err := os.Open(filePath)
-  if err != nil{
-    lg.Printf("Failed to open %s:%s", filePath, err)
-  }
-}
