@@ -47,6 +47,12 @@ func setPeers(peers []PeerGorm) error {
       return fmt.Errorf("error executing command: %v", err)
     }
   }
+  cmd := exec.Command("wg-quick", "save", "wg0")
+  // Запускаем команду и возвращаем ошибку, если она произошла
+  if err := cmd.Run(); err != nil {
+    return fmt.Errorf("error executing command: %v", err)
+  }
+  lg.Println("wg-quick")
   return nil
 }
 
