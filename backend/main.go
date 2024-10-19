@@ -1,6 +1,10 @@
 package main
 
 func main(){
+  initDB()
+  ReadWGCreds()
+  GenAndWritePeers()
+
   // err := CreateDbs()
   // if err != nil{
   //   lg.Fatalf("Failed to create tables in psql: %s", err)
