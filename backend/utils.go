@@ -82,8 +82,8 @@ func readfile(filePath string) string{
 }
 
 func generatePeers() []PeerGorm{
-  peersArray := make([]PeerGorm, 255)
-  for i:=2;i<254;i++{
+  peersArray := make([]PeerGorm, 254)
+  for i:=0;i<254;i++{
     privateKey, publicKey, err := generateKeys()
     if err != nil{
       lg.Printf("Failed to generate keys: %s", err)
@@ -91,9 +91,10 @@ func generatePeers() []PeerGorm{
     peersArray[i].Name = publicKey
     peersArray[i].PublicKey = publicKey
     peersArray[i].PrivateKey = privateKey
-    peersArray[i].AllowedIP = fmt.Sprintf("10.0.0.%d/32", i)
+    peersArray[i].AllowedIP = fmt.Sprintf("10.0.0.%d/32", i+2)
     peersArray[i].Status = "Virgin"
     peersArray[i].InterfaceID = 1
+    // lg.Println(peersArray[i])
     // lg.Printf("Name:%s", peersArray[i].Name)
     // lg.Printf("PubKey:%s", peersArray[i].PublicKey)
     // lg.Printf("PrivateKey:%s", peersArray[i].PrivateKey)

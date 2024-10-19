@@ -44,13 +44,15 @@ func setPeers(peers []PeerGorm) error {
 
     // Запускаем команду и возвращаем ошибку, если она произошла
     if err := cmd.Run(); err != nil {
-      return fmt.Errorf("error executing command: %v", err)
+      return fmt.Errorf("error executing command set: %v", err)
     }
+    lg.Println(peer.AllowedIP)
+    lg.Println(peer.PublicKey)
   }
   cmd := exec.Command("wg-quick", "save", "wg0")
   // Запускаем команду и возвращаем ошибку, если она произошла
   if err := cmd.Run(); err != nil {
-    return fmt.Errorf("error executing command: %v", err)
+    return fmt.Errorf("error executing command save: %v", err)
   }
   lg.Println("wg-quick")
   return nil
