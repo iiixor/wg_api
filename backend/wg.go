@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+  "os/exec"
 )
 
 
@@ -35,6 +36,18 @@ func createClientConfig(inter InterfaceGorm, peer PeerGorm) WgConfig{
   cfg.Peer.Endpoint = Endpoint
   cfg.Peer.PersistentKeepalive = "21"
   return cfg
+}
+
+func setPeers(peers []PeerGorm) error {
+  for _,peer := range peers {
+    cmd := exec.Command("wg", "set", "wg0", "peer", peer.PublicKey, "allowed-ips", peer.AllowedIP)
+
+    // Запускаем команду и возвращаем ошибку, если она произошла
+    if err := cmd.Run(); err != nil {
+      return fmt.Errorf("error executing command: %v", err)
+    }
+  }
+  return nil
 }
 
 func writePeersIntoWgConf(filePath string, peers []PeerGorm) error {
@@ -77,7 +90,7 @@ func grantConsumerPeer(cons ConsGorm) (ConsGorm,PeerGorm, error){
 
 func GenAndWritePeers() error{
   peers := generatePeers()
-  err := writePeersIntoWgConf("/etc/wireguard/wg0.conf", peers)
+  err := setPeers(peers)
   if err != nil {
     lg.Printf("Failed to write peers into wg conf: %s", err)
     return err
