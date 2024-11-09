@@ -12,8 +12,8 @@ import (
 func ReadWGCreds() error {
   var inter InterfaceGorm
   inter.Name = "wg0"
-  inter.PublicKey = readfile("/etc/wireguard/serverPublicKey")
-  inter.PrivateKey = readfile("/etc/wireguard/serverPrivateKey")
+  inter.PublicKey = readfile("/etc/wireguard/publickey")
+  inter.PrivateKey = readfile("/etc/wireguard/privatekey")
   inter.PrivateKey = strings.TrimSpace(inter.PrivateKey)
   inter.PublicKey = strings.TrimSpace(inter.PublicKey)
   lg.Println("/etc/wireguard/ was read successfully!")
