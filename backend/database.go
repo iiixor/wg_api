@@ -152,9 +152,9 @@ func GiveLastPaidPeerFromORM(cons ConsGorm) (ConsGorm, PeerGorm, error) {
 	db := OpenDB()
 	var resCons ConsGorm
 	var resPeer PeerGorm
-	db.Where("chat_id = ?", cons.ChatID).Last(&resCons)
+	db.Where("username = ?", cons.Username).Last(&resCons)
 	if resCons.PeerID == 0 {
-		err := fmt.Errorf("Failed to find consumer with ChatID %s in database", cons.ChatID)
+		err := fmt.Errorf("Failed to find consumer with username %s in database", cons.Username)
 		return ConsGorm{}, PeerGorm{}, err
 	}
 	db.Where("id = ?", resCons.PeerID).First(&resPeer)

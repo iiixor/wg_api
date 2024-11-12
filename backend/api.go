@@ -14,12 +14,12 @@ import (
 func initServer() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.Get("/GetConsumerInfo/?={ChatID}", GetConsumerInfoAPI)
+	r.Get("/GetConsumerInfo/?={Username}", GetConsumerInfoAPI)
 	r.Get("/GetVacantPeer/", GetVacantPeerAPI)
 	r.Get("/GrantPeerToConsumer/{Username}", GrantPeerToConsumerAPI)
 	r.Get("/Init/ReadWgCreds", ReadWgCredsAPI)
 	r.Get("/Init/GenAndWritePeers", GenAndWritePeersAPI)
-	r.Get("/GiveLastCfg/{ChatID}", GiveLastPaidPeerAPI)
+	r.Get("/GiveLastCfg/{Username}", GiveLastPaidPeerAPI)
 	r.Get("/GetTunnelList/{Username}", GetTunnelListAPI)
 	r.Get("/ExtendPeer/{PeerID}", ExtendPeerAPI)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +36,6 @@ func DrawJSON(w http.ResponseWriter, v interface{}, statusCode int) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(statusCode)
 	_, _ = w.Write(buf.Bytes())
@@ -46,7 +45,6 @@ func GetConsumerInfoAPI(w http.ResponseWriter, r *http.Request) {
 	var consumer ConsGorm
 	consumer.ChatID = chi.URLParam(r, "ChatID")
 	consumer, err := GetConsumerInfoDB(consumer)
-	// DrawJSON(w, consumer, 200)
 	if consumer.Username == "" {
 		w.WriteHeader(404)
 		w.Write([]byte("Consumer not found!"))
@@ -65,13 +63,15 @@ func GetVacantPeerAPI(w http.ResponseWriter, r *http.Request) {
 	var vacantPeer PeerGorm
 	vacantPeer, err := GetVacantPeerFromORM()
 	if err != nil {
+		msg := fmt.Sprintf("Failed to get vacant peer from database: %s", err)
 		w.WriteHeader(422)
-		lg.Printf("Failed to get vacant peer %s", err)
+		w.Write([]byte(msg))
 		return
 	}
 	if vacantPeer.AllowedIP == "" {
+		msg := fmt.Sprintln("No vacant peers")
 		w.WriteHeader(404)
-		lg.Println("No vacant peers")
+		w.Write([]byte(msg))
 		return
 	}
 	DrawJSON(w, vacantPeer, 200)
@@ -81,26 +81,24 @@ func GetVacantPeerAPI(w http.ResponseWriter, r *http.Request) {
 func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request) {
 	var consumer ConsGorm
 	consumer.Username = chi.URLParam(r, "Username")
-	// var resCons ConsGorm
 	var resPeer PeerGorm
 	_, resPeer, err := grantConsumerPeer(consumer)
 	if err != nil {
-		lg.Println("Failed to grant peer to consumer!")
+		msg := fmt.Sprintf("Failed to grant peer to consumer: %s", err)
 		w.WriteHeader(422)
-		w.Write([]byte(err.Error()))
+		w.Write([]byte(msg))
 		return
 	}
 	inter, err := GetInterfaceInfoFromORM()
 	if err != nil {
-		lg.Printf("Failed to get interface info:%s", err)
+		msg := fmt.Sprintf("Failed to get interface info from database :%s", err)
+		w.WriteHeader(422)
+		w.Write([]byte(msg))
 		return
 	}
 	var clientCfg WgConfig
 	clientCfg = createClientConfig(inter, resPeer)
-
 	DrawJSON(w, clientCfg, 200)
-	// w.WriteHeader(200)
-	// w.Write([]byte(fmt.Sprintf("UserID: %s was granted peer %d", consumer.ChatID, peerID)))
 }
 
 func ReadWgCredsAPI(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +126,7 @@ func GenAndWritePeersAPI(w http.ResponseWriter, r *http.Request) {
 
 func GiveLastPaidPeerAPI(w http.ResponseWriter, r *http.Request) {
 	var consumer ConsGorm
-	consumer.ChatID = chi.URLParam(r, "ChatID")
+	consumer.Username = chi.URLParam(r, "Username")
 	var resPeer PeerGorm
 	_, resPeer, err := GiveLastPaidPeer(consumer)
 	if err != nil {
@@ -183,7 +181,8 @@ func ExtendPeerAPI(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(msg))
 		return
 	}
-	w.WriteHeader(200)
 	msg := fmt.Sprintf("1 Month added successfully to peer ID: %d", peer.ID)
-	w.Write([]byte(msg))
+	var resp Response
+	resp.Message = msg
+	DrawJSON(w, resp, 200)
 }

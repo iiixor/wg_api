@@ -116,7 +116,7 @@ func GiveLastPaidPeer(cons ConsGorm) (ConsGorm, PeerGorm, error) {
 	var resPeer PeerGorm
 	resCons, resPeer, err := GiveLastPaidPeerFromORM(cons)
 	if err != nil {
-		err = fmt.Errorf("Failed to give last paid peer of user %s from ORM : %s", resCons.ChatID, err)
+		err = fmt.Errorf("Failed to give last paid peer of user %s from ORM : %s", resCons.Username, err)
 		return ConsGorm{}, PeerGorm{}, err
 	}
 	return resCons, resPeer, nil
