@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"golang.org/x/crypto/curve25519"
 )
@@ -113,4 +114,8 @@ func MakePeerIDArray(cons []ConsGorm) []int {
 		res[i] = int(con.PeerID)
 	}
 	return res
+}
+
+func AddMonthToExpire(currentTime time.Time) time.Time {
+	return currentTime.AddDate(0, 1, 0)
 }

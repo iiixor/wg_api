@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -21,6 +21,7 @@ func initServer() {
 	r.Get("/Init/GenAndWritePeers", GenAndWritePeersAPI)
 	r.Get("/GiveLastCfg/{ChatID}", GiveLastPaidPeerAPI)
 	r.Get("/GetTunnelList/{Username}", GetTunnelListAPI)
+	r.Get("/ExtendPeer/{PeerID}", ExtendPeerAPI)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Hello World!"))
 	})
@@ -97,8 +98,6 @@ func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request) {
 	var clientCfg WgConfig
 	clientCfg = createClientConfig(inter, resPeer)
 
-	clientCfg.FileName = fmt.Sprintf("%d-%s-%s", resPeer.ID, consumer.Username, time.Now().Format("2006-01-02-15-04-05"))
-	lg.Println(clientCfg)
 	DrawJSON(w, clientCfg, 200)
 	// w.WriteHeader(200)
 	// w.Write([]byte(fmt.Sprintf("UserID: %s was granted peer %d", consumer.ChatID, peerID)))
@@ -148,6 +147,7 @@ func GiveLastPaidPeerAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var clientCfg WgConfig
+	clientCfg.FileName = resPeer.Name
 	clientCfg = createClientConfig(inter, resPeer)
 	DrawJSON(w, clientCfg, 200)
 }
@@ -163,4 +163,27 @@ func GetTunnelListAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	DrawJSON(w, foundedPeers, 200)
+}
+
+func ExtendPeerAPI(w http.ResponseWriter, r *http.Request) {
+	var peer PeerGorm
+	strID := chi.URLParam(r, "PeerID")
+	uintID, err := strconv.ParseUint(strID, 10, 32)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to convert str to uint: %s", err)
+		w.WriteHeader(422)
+		w.Write([]byte(msg))
+		return
+	}
+	peer.ID = uint(uintID)
+	err = AddMonthToPeerExpiration(peer)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to add month to peer expiration: %s", err)
+		w.WriteHeader(422)
+		w.Write([]byte(msg))
+		return
+	}
+	w.WriteHeader(200)
+	msg := fmt.Sprintf("1 Month added successfully to peer ID: %d", peer.ID)
+	w.Write([]byte(msg))
 }

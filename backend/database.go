@@ -109,6 +109,18 @@ func GetVacantPeerFromORM() (PeerGorm, error) {
 	return vacantPeer, nil
 }
 
+func AddMonthToPeerExpiration(peer PeerGorm) error {
+	db := OpenDB()
+	var resPeer PeerGorm
+	db.Where("id = ?", peer.ID).First(&resPeer)
+	if resPeer.ID == 0 {
+		return fmt.Errorf("Failed to find peer with id %d in database", peer.ID)
+	}
+	resPeer.ExpirationTime = resPeer.ExpirationTime.AddDate(0, 1, 0)
+	db.Save(&resPeer)
+	return nil
+}
+
 func GetInterfaceInfoFromORM() (InterfaceGorm, error) {
 	var inter InterfaceGorm
 	db := OpenDB()
@@ -128,8 +140,11 @@ func writePeersToORM(peers []PeerGorm) error {
 
 func grantConsumerPeerInORM(cons ConsGorm, peer PeerGorm) (ConsGorm, PeerGorm, error) {
 	db := OpenDB()
+	peer.Name = fmt.Sprintf("%d-%s-%s", peer.ID, cons.Username, time.Now().Format("2006-01-02-15-04-05"))
+	lg.Println(peer.Name)
 	cons.PeerID = uint32(peer.ID)
 	db.Save(&cons)
+	db.Save(&peer)
 	return cons, peer, nil
 }
 

@@ -26,6 +26,7 @@ func ReadWGCreds() error {
 
 func createClientConfig(inter InterfaceGorm, peer PeerGorm) WgConfig {
 	var cfg WgConfig
+	cfg.FileName = peer.Name
 	cfg.Interface.Address = peer.AllowedIP
 	cfg.Interface.PrivateKey = peer.PrivateKey
 	cfg.Interface.MTU = MTU
@@ -82,14 +83,14 @@ func grantConsumerPeer(cons ConsGorm) (ConsGorm, PeerGorm, error) {
 	var vacantPeer PeerGorm
 	vacantPeer, err := GetVacantPeerFromORM()
 	if err != nil {
-		lg.Printf("Failed to get vacant peer: %s", err)
+		fmt.Errorf("Failed to get vacant peer from database: %s", err)
 		return ConsGorm{}, PeerGorm{}, err
 	}
 	var resCons ConsGorm
 	var resPeer PeerGorm
 	resCons, resPeer, err = grantConsumerPeerInORM(cons, vacantPeer)
 	if err != nil {
-		lg.Printf("Failed to grant vacant peer to the comsumer: %s", err)
+		fmt.Errorf("Failed to grant peer to consumer in database: %s", err)
 		return ConsGorm{}, PeerGorm{}, err
 	}
 	return resCons, resPeer, nil
