@@ -23,7 +23,8 @@ func initServer() {
 	r.Get("/GetTunnelList/{Username}", GetTunnelListAPI)
 	r.Get("/ExtendPeer/{PeerID}", ExtendPeerAPI)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello World!"))
+		resp.Message = fmt.Sprintln("Hello World!")
+		DrawJSON(w, resp, 200)
 	})
 	http.ListenAndServe(":3000", r)
 }
@@ -46,14 +47,13 @@ func GetConsumerInfoAPI(w http.ResponseWriter, r *http.Request) {
 	consumer.ChatID = chi.URLParam(r, "ChatID")
 	consumer, err := GetConsumerInfoDB(consumer)
 	if consumer.Username == "" {
-		w.WriteHeader(404)
-		w.Write([]byte("Consumer not found!"))
-		// lg.Printf("Consumer %s not found!", consumer.ChatID)
+		resp.Message = "Consumer not found!"
+		DrawJSON(w, resp, 422)
 		return
 	}
 	if err != nil {
-		w.WriteHeader(422)
-		w.Write([]byte(err.Error()))
+		resp.Message = fmt.Sprintf("Failed to get consumer from database: %s", err)
+		DrawJSON(w, resp, 422)
 		return
 	}
 	DrawJSON(w, consumer, 200)
@@ -63,19 +63,16 @@ func GetVacantPeerAPI(w http.ResponseWriter, r *http.Request) {
 	var vacantPeer PeerGorm
 	vacantPeer, err := GetVacantPeerFromORM()
 	if err != nil {
-		msg := fmt.Sprintf("Failed to get vacant peer from database: %s", err)
-		w.WriteHeader(422)
-		w.Write([]byte(msg))
+		resp.Message = fmt.Sprintf("Failed to get vacant peer from database: %s", err)
+		DrawJSON(w, resp, 422)
 		return
 	}
 	if vacantPeer.AllowedIP == "" {
-		msg := fmt.Sprintln("No vacant peers")
-		w.WriteHeader(404)
-		w.Write([]byte(msg))
+		resp.Message = fmt.Sprintln("No vacant peers")
+		DrawJSON(w, resp, 422)
 		return
 	}
 	DrawJSON(w, vacantPeer, 200)
-	lg.Printf("Vacant peer: %s", vacantPeer.Name)
 }
 
 func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request) {
@@ -84,16 +81,14 @@ func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request) {
 	var resPeer PeerGorm
 	_, resPeer, err := grantConsumerPeer(consumer)
 	if err != nil {
-		msg := fmt.Sprintf("Failed to grant peer to consumer: %s", err)
-		w.WriteHeader(422)
-		w.Write([]byte(msg))
+		resp.Message = fmt.Sprintf("Failed to grant peer to consumer: %s", err)
+		DrawJSON(w, resp, 422)
 		return
 	}
 	inter, err := GetInterfaceInfoFromORM()
 	if err != nil {
-		msg := fmt.Sprintf("Failed to get interface info from database :%s", err)
-		w.WriteHeader(422)
-		w.Write([]byte(msg))
+		resp.Message = fmt.Sprintf("Failed to get interface info from database :%s", err)
+		DrawJSON(w, resp, 422)
 		return
 	}
 	var clientCfg WgConfig
@@ -104,24 +99,22 @@ func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request) {
 func ReadWgCredsAPI(w http.ResponseWriter, r *http.Request) {
 	err := ReadWGCreds()
 	if err != nil {
-		lg.Printf("Failed to read wg creds: %s", err)
-		w.WriteHeader(422)
-		w.Write([]byte(err.Error()))
+		resp.Message = fmt.Sprintf("Failed to read wg creds: %s", err)
+		DrawJSON(w, resp, 422)
 		return
 	}
-	w.WriteHeader(200)
-	w.Write([]byte("Wireguard creds are successfully read!"))
+	resp.Message = fmt.Sprintln("Wireguard creds are successfully read!")
+	DrawJSON(w, resp, 200)
 }
 
 func GenAndWritePeersAPI(w http.ResponseWriter, r *http.Request) {
 	err := GenAndWritePeers()
 	if err != nil {
-		lg.Printf("Failed to generate and write peers: %s", err)
-		w.WriteHeader(422)
-		w.Write([]byte(err.Error()))
+		resp.Message = fmt.Sprintf("Failed to generate and write peers: %s", err)
+		DrawJSON(w, resp, 422)
 	}
-	w.WriteHeader(200)
-	w.Write([]byte("Peers generated and written successfully!"))
+	resp.Message = fmt.Sprintln("Peers generated and written successfully!")
+	DrawJSON(w, resp, 200)
 }
 
 func GiveLastPaidPeerAPI(w http.ResponseWriter, r *http.Request) {
@@ -130,18 +123,14 @@ func GiveLastPaidPeerAPI(w http.ResponseWriter, r *http.Request) {
 	var resPeer PeerGorm
 	_, resPeer, err := GiveLastPaidPeer(consumer)
 	if err != nil {
-		msg := fmt.Sprintf("Failed to give last paid peer: ", err)
-		lg.Println(msg)
-		w.WriteHeader(422)
-		w.Write([]byte(msg))
+		resp.Message = fmt.Sprintf("Failed to give last paid peer: ", err)
+		DrawJSON(w, resp, 422)
 		return
 	}
 	inter, err := GetInterfaceInfoFromORM()
 	if err != nil {
-		msg := fmt.Sprintf("Failed to get interface info:%s", err)
-		lg.Printf(msg)
-		w.WriteHeader(422)
-		w.Write([]byte(msg))
+		resp.Message = fmt.Sprintf("Failed to get interface info:%s", err)
+		DrawJSON(w, resp, 422)
 		return
 	}
 	var clientCfg WgConfig
@@ -155,9 +144,8 @@ func GetTunnelListAPI(w http.ResponseWriter, r *http.Request) {
 	cons.Username = chi.URLParam(r, "Username")
 	foundedPeers, err := getTunnelList(cons)
 	if err != nil {
-		lg.Printf("Failed to get tunnel list: %s", err)
-		w.WriteHeader(422)
-		w.Write([]byte(fmt.Sprintf("Failed to get tunnel list: %s", err)))
+		resp.Message = fmt.Sprintf("Failed to get tunnel list: %s", err)
+		DrawJSON(w, resp, 422)
 		return
 	}
 	DrawJSON(w, foundedPeers, 200)
@@ -168,21 +156,17 @@ func ExtendPeerAPI(w http.ResponseWriter, r *http.Request) {
 	strID := chi.URLParam(r, "PeerID")
 	uintID, err := strconv.ParseUint(strID, 10, 32)
 	if err != nil {
-		msg := fmt.Sprintf("Failed to convert str to uint: %s", err)
-		w.WriteHeader(422)
-		w.Write([]byte(msg))
+		resp.Message = fmt.Sprintf("Failed to convert str to uint: %s", err)
+		DrawJSON(w, resp, 422)
 		return
 	}
 	peer.ID = uint(uintID)
 	err = AddMonthToPeerExpiration(peer)
 	if err != nil {
-		msg := fmt.Sprintf("Failed to add month to peer expiration: %s", err)
-		w.WriteHeader(422)
-		w.Write([]byte(msg))
+		resp.Message = fmt.Sprintf("Failed to add month to peer expiration: %s", err)
+		DrawJSON(w, resp, 422)
 		return
 	}
-	msg := fmt.Sprintf("1 Month added successfully to peer ID: %d", peer.ID)
-	var resp Response
-	resp.Message = msg
+	resp.Message = fmt.Sprintf("1 Month added successfully to peer ID: %d", peer.ID)
 	DrawJSON(w, resp, 200)
 }

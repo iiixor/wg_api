@@ -9,6 +9,8 @@ type Response struct {
 	Message string
 }
 
+var resp Response
+
 type PeerCfg struct {
 	PublicKey           string
 	AllowedIPs          string

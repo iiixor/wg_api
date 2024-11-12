@@ -41,7 +41,6 @@ func createClientConfig(inter InterfaceGorm, peer PeerGorm) WgConfig {
 func setPeers(peers []PeerGorm) error {
 	for _, peer := range peers {
 		cmd := exec.Command("wg", "set", "wg0", "peer", peer.PublicKey, "allowed-ips", peer.AllowedIP)
-
 		// Запускаем команду и возвращаем ошибку, если она произошла
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("error executing command set: %v", err)
@@ -90,7 +89,7 @@ func grantConsumerPeer(cons ConsGorm) (ConsGorm, PeerGorm, error) {
 	var resPeer PeerGorm
 	resCons, resPeer, err = grantConsumerPeerInORM(cons, vacantPeer)
 	if err != nil {
-		fmt.Errorf("Failed to grant peer to consumer in database: %s", err)
+		err = fmt.Errorf("Failed to grant peer to consumer in database: %s", err)
 		return ConsGorm{}, PeerGorm{}, err
 	}
 	return resCons, resPeer, nil
