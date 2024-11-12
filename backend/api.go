@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -15,7 +16,7 @@ func initServer() {
 	r.Use(middleware.Logger)
 	r.Get("/GetConsumerInfo/?={ChatID}", GetConsumerInfoAPI)
 	r.Get("/GetVacantPeer/", GetVacantPeerAPI)
-	r.Get("/GrantPeerToConsumer/{ChatID}+{Username}", GrantPeerToConsumerAPI)
+	r.Get("/GrantPeerToConsumer/{Username}", GrantPeerToConsumerAPI)
 	r.Get("/Init/ReadWgCreds", ReadWgCredsAPI)
 	r.Get("/Init/GenAndWritePeers", GenAndWritePeersAPI)
 	r.Get("/GiveLastCfg/{ChatID}", GiveLastPaidPeerAPI)
@@ -78,7 +79,6 @@ func GetVacantPeerAPI(w http.ResponseWriter, r *http.Request) {
 
 func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request) {
 	var consumer ConsGorm
-	consumer.ChatID = chi.URLParam(r, "ChatID")
 	consumer.Username = chi.URLParam(r, "Username")
 	// var resCons ConsGorm
 	var resPeer PeerGorm
@@ -96,6 +96,9 @@ func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	var clientCfg WgConfig
 	clientCfg = createClientConfig(inter, resPeer)
+
+	clientCfg.FileName = fmt.Sprintf("%d-%s-%s", resPeer.ID, consumer.Username, time.Now().Format("2006-01-02-15-04-05"))
+	lg.Println(clientCfg)
 	DrawJSON(w, clientCfg, 200)
 	// w.WriteHeader(200)
 	// w.Write([]byte(fmt.Sprintf("UserID: %s was granted peer %d", consumer.ChatID, peerID)))
@@ -130,13 +133,19 @@ func GiveLastPaidPeerAPI(w http.ResponseWriter, r *http.Request) {
 	var resPeer PeerGorm
 	_, resPeer, err := GiveLastPaidPeer(consumer)
 	if err != nil {
-		lg.Printf("Failed to find last paid peer!: %s", err)
+		msg := fmt.Sprintf("Failed to give last paid peer: ", err)
+		lg.Println(msg)
 		w.WriteHeader(422)
-		w.Write([]byte("Failed to find last paid peer!"))
+		w.Write([]byte(msg))
+		return
 	}
 	inter, err := GetInterfaceInfoFromORM()
 	if err != nil {
-		lg.Printf("Failed to get interface info:%s", err)
+		msg := fmt.Sprintf("Failed to get interface info:%s", err)
+		lg.Printf(msg)
+		w.WriteHeader(422)
+		w.Write([]byte(msg))
+		return
 	}
 	var clientCfg WgConfig
 	clientCfg = createClientConfig(inter, resPeer)
