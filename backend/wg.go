@@ -57,6 +57,23 @@ func setPeers(peers []PeerGorm) error {
 	return nil
 }
 
+func setPeer(peer PeerGorm) error {
+	cmd := exec.Command("wg", "set", "wg0", "peer", peer.PublicKey, "allowed-ips", peer.AllowedIP)
+	// Запускаем команду и возвращаем ошибку, если она произошла
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error executing command set: %v", err)
+	}
+	lg.Println(peer.AllowedIP)
+	lg.Println(peer.PublicKey)
+	cmd = exec.Command("wg-quick", "save", "wg0")
+	// Запускаем команду и возвращаем ошибку, если она произошла
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error executing command save: %v", err)
+	}
+	lg.Println("wg-quick")
+	return nil
+}
+
 func writePeersIntoWgConf(filePath string, peers []PeerGorm) error {
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -119,4 +136,51 @@ func GiveLastPaidPeer(cons ConsGorm) (ConsGorm, PeerGorm, error) {
 		return ConsGorm{}, PeerGorm{}, err
 	}
 	return resCons, resPeer, nil
+}
+
+func RestrictPeer(peer PeerGorm) error {
+	lg.Println(peer.AllowedIP)
+	peer.AllowedIP = strings.ReplaceAll(peer.AllowedIP, "10.0.0.", "0.0.0.")
+	peer.Status = "Expired"
+	lg.Println(peer.AllowedIP)
+	cmd := exec.Command("wg", "set", "wg0", "peer", peer.PublicKey, "allowed-ips", peer.AllowedIP)
+	// Запускаем команду и возвращаем ошибку, если она произошла
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error executing command set: %v", err)
+	}
+	cmd = exec.Command("wg-quick", "save", "wg0")
+	// Запускаем команду и возвращаем ошибку, если она произошла
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error executing command save: %v", err)
+	}
+	if err := RestictPeerInORM(peer); err != nil {
+		return fmt.Errorf("Failed to restrict peer %d in ORM: %s", peer.ID, err)
+	}
+	lg.Printf("Peer was restircted succefully %s", peer.PublicKey)
+	return nil
+}
+
+func KillAndRegenPeer(oldPeer PeerGorm) error {
+	newPeer, err := KillAndRegenPeerInORM(oldPeer)
+	if err != nil {
+		return fmt.Errorf("Failed to kill and regen peer in ORM %s: %s", oldPeer.PublicKey, err)
+	}
+
+	cmd := exec.Command("wg", "set", "wg0", "peer", newPeer.PublicKey, "allowed-ips", newPeer.AllowedIP)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error executing command set: %v", err)
+	}
+
+	cmd = exec.Command("wg", "set", "wg0", "peer", oldPeer.PublicKey, "remove")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error executing command set: %v", err)
+	}
+
+	cmd = exec.Command("wg-quick", "save", "wg0")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error executing command save: %v", err)
+	}
+
+	lg.Printf("Peer %s was killed and regened to %s", oldPeer.PublicKey, newPeer.PublicKey)
+	return nil
 }

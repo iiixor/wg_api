@@ -4,11 +4,22 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/curve25519"
 )
+
+func loadEnv() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Ошибка загрузки .env файла: %v", err)
+	}
+	token = os.Getenv("BOT_TOKEN")
+}
 
 func generateKeys() (string, string, error) {
 	// Создаем 32 байта для приватного ключа
@@ -50,17 +61,24 @@ func generatePeers() []PeerGorm {
 		peersArray[i].AllowedIP = fmt.Sprintf("10.0.0.%d/32", i+2)
 		peersArray[i].Status = "Virgin"
 		peersArray[i].InterfaceID = 1
-		// lg.Println(peersArray[i])
-		// lg.Printf("Name:%s", peersArray[i].Name)
-		// lg.Printf("PubKey:%s", peersArray[i].PublicKey)
-		// lg.Printf("PrivateKey:%s", peersArray[i].PrivateKey)
-		// lg.Printf("AllowedIP:%s", peersArray[i].AllowedIP)
-		// lg.Printf("Status:%s", peersArray[i].Status)
-		// lg.Printf("InterfaceID:%d\n\n", peersArray[i].InterfaceID)
-		// lg.Printf("Name: %s\nPublicKey:%s\nPrivateKey:%s\nAllowedIP:%s\nStatus:%s\nInterfaceID:%s", pe)
-		// lg.Println(peersArray[i])
 	}
 	return peersArray
+}
+
+func RegenOnePeer(oldPeer PeerGorm) PeerGorm {
+	var newPeer PeerGorm
+	privateKey, publicKey, err := generateKeys()
+	if err != nil {
+		lg.Printf("Failed to generate keys: %s", err)
+	}
+	newPeer = oldPeer
+	newPeer.Name = publicKey
+	newPeer.PublicKey = publicKey
+	newPeer.PrivateKey = privateKey
+	newPeer.AllowedIP = strings.ReplaceAll(oldPeer.AllowedIP, "0.0.0.", "10.0.0.")
+	newPeer.Status = "Virgin"
+	newPeer.InterfaceID = 1
+	return newPeer
 }
 
 func MakePeerIDArray(cons []ConsGorm) []int {
@@ -73,4 +91,33 @@ func MakePeerIDArray(cons []ConsGorm) []int {
 
 func AddMonthToExpire(currentTime time.Time) time.Time {
 	return currentTime.AddDate(0, 1, 0)
+}
+
+func Expired(expDate time.Time) bool {
+	currentDate := time.Now()
+	if currentDate.After(expDate) {
+		return true
+	}
+	return false
+}
+
+func StartExpirationChecker(interval time.Duration) {
+	for {
+		lg.Println("Started to check expiration...")
+		err := CheckExpiration()
+		if err != nil {
+			lg.Printf("Failed to check expiration: %s", err)
+		}
+		// Ожидание до следующей проверки
+		lg.Printf("Next checking will be in %s...\n", interval)
+		time.Sleep(interval)
+	}
+}
+
+func escapeMarkdownV2(text string) string {
+	specialChars := []string{"_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
+	for _, char := range specialChars {
+		text = strings.ReplaceAll(text, char, "\\"+char)
+	}
+	return text
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -176,13 +177,28 @@ func FindCons(cons ConsGorm) ([]ConsGorm, error) {
 	return resCons, nil
 }
 
+func FindChatIDsByPeerIDs(PeerIDs uint) (int64, error) {
+	db := OpenDB()
+	var resCons ConsGorm
+	db.Where("peer_id = ?", uint32(PeerIDs)).First(&resCons)
+	lg.Println(resCons)
+	if resCons.ChatID == "" {
+		return int64(0), fmt.Errorf("Consumer with peer_id %d was not found in database!", PeerIDs)
+	}
+	intChatID, err := strconv.Atoi(resCons.ChatID)
+	if err != nil {
+		return int64(0), fmt.Errorf("Failed to convert string %s to int", resCons.ChatID)
+	}
+	return int64(intChatID), nil
+}
+
 func FindPeers(peerIDs []int) ([]PeerGorm, error) {
 	db := OpenDB()
 	var resPeers []PeerGorm
 	if len(peerIDs) > 0 {
 		db.Find(&resPeers, peerIDs)
 		if len(resPeers) == 0 {
-			err := fmt.Errorf("Peers: %s were not found in database!", peerIDs)
+			err := fmt.Errorf("Peers: %d were not found in database!", peerIDs)
 			return []PeerGorm{}, err
 		}
 		return resPeers, nil
@@ -203,4 +219,94 @@ func getTunnelList(cons ConsGorm) ([]PeerGorm, error) {
 		return []PeerGorm{}, err
 	}
 	return foundedPeers, nil
+}
+
+func CheckExpiration() error {
+	db := OpenDB()
+	var resPeers []PeerGorm
+	db.Find(&resPeers, "status != ?", "Virgin")
+	if len(resPeers) == 0 {
+		return fmt.Errorf("Failed to find all consumers in database!")
+	}
+
+	for _, peer := range resPeers {
+		days := time.Since(peer.ExpirationTime).Hours() / 24
+		switch {
+		case days > float64(-1) && days < float64(0):
+			lg.Printf("PRE_RESTRICTED %s DAYS: %f", peer.AllowedIP, days)
+			ChatID, err := FindChatIDsByPeerIDs(peer.ID)
+			if err != nil {
+				return fmt.Errorf("Failed to find ChatIDs of Peers %s: %s", peer.ID, err)
+			}
+			name := escapeMarkdownV2(peer.Name)
+			msg := fmt.Sprintf("Уважаемый пользователь\\!\n\n"+
+				"Обращаем Ваше внимание, что конфиг `%s` *истекает в течение суток*", name)
+
+			go sendMessage(ChatID, msg)
+
+		case days >= float64(0) && days < float64(7):
+			lg.Printf("RESTRICTED %s DAYS: %f", peer.AllowedIP, days)
+			err := RestrictPeer(peer)
+			if err != nil {
+				return fmt.Errorf("Failed to restrict peer %d: %s", peer.ID, err)
+			}
+			ChatID, err := FindChatIDsByPeerIDs(peer.ID)
+			if err != nil {
+				return fmt.Errorf("Failed to find ChatIDs of Peers %s: %s", peer.ID, err)
+			}
+
+			name := escapeMarkdownV2(peer.Name)
+			msg := fmt.Sprintf("Уважаемый пользователь\\!\n\n"+
+				"Обращаем Ваше внимание, что конфиг `%s` истёк\\. "+
+				"*Если он не будет продлён в течение 7 дней, то, к сожалению "+
+				"мы будем вынуждены безвовратно удалить его с нашего севера*", name)
+
+			go sendMessage(ChatID, msg)
+
+		case days >= float64(7) && days < float64(8):
+			lg.Printf("KILLING %s DAYS: %f", peer.AllowedIP, days)
+			err := KillAndRegenPeer(peer)
+			if err != nil {
+				return fmt.Errorf("Failed to kill peer %d regen new: %s", peer.ID, err)
+			}
+			ChatID, err := FindChatIDsByPeerIDs(peer.ID)
+			if err != nil {
+				return fmt.Errorf("Failed to find ChatIDs of Peers %s: %s", peer.ID, err)
+			}
+			name := escapeMarkdownV2(peer.Name)
+			msg := fmt.Sprintf("Уважаемый пользователь\\!\n\n"+
+				"Обращаем Ваше внимание, что конфиг `%s` не был оплачен в течение 7 дней "+
+				"и теперь *безвозратно удален с нашего сервера*", name)
+
+			go sendMessage(ChatID, msg)
+
+		}
+	}
+
+	return nil
+}
+
+func RestictPeerInORM(peer PeerGorm) error {
+	db := OpenDB()
+	var resPeer PeerGorm
+	db.Find(&resPeer, "public_key = ?", peer.PublicKey)
+	if resPeer.ID == 0 {
+		return fmt.Errorf("Failed to find peer %s", peer.PublicKey)
+	}
+	resPeer.AllowedIP = peer.AllowedIP
+	resPeer.Status = "Expired"
+	db.Save(&resPeer)
+	return nil
+}
+
+func KillAndRegenPeerInORM(oldPeer PeerGorm) (PeerGorm, error) {
+	db := OpenDB()
+	db.Find(&oldPeer, "public_key = ?", oldPeer.PublicKey)
+	if oldPeer.ID == 0 {
+		return PeerGorm{}, fmt.Errorf("Failed to find peer %s", oldPeer.PublicKey)
+	}
+	oldPeer = RegenOnePeer(oldPeer)
+
+	db.Save(&oldPeer)
+	return oldPeer, nil
 }

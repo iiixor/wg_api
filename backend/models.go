@@ -33,4 +33,11 @@ type WgConfig struct {
 
 var response Response
 
+type Message struct {
+	ChatID  int64
+	Content string
+}
+
+var messageChannel chan Message
+
 var lg *log.Logger = log.New(os.Stdout, "INFO: ", log.Ltime|log.Lmicroseconds)

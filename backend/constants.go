@@ -18,3 +18,7 @@ const (
 	PubKeyPath     = "/etc/wireguard/serverPublicKey"
 	PrivateKeyPath = "/etc/wireguard/serverPrivateKey"
 )
+
+var (
+	token string
+)

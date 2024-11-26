@@ -123,7 +123,7 @@ func GiveLastPaidPeerAPI(w http.ResponseWriter, r *http.Request) {
 	var resPeer PeerGorm
 	_, resPeer, err := GiveLastPaidPeer(consumer)
 	if err != nil {
-		resp.Message = fmt.Sprintf("Failed to give last paid peer: ", err)
+		resp.Message = fmt.Sprintf("Failed to give last paid peer: %s", err)
 		DrawJSON(w, resp, 422)
 		return
 	}
