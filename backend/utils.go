@@ -13,12 +13,28 @@ import (
 	"golang.org/x/crypto/curve25519"
 )
 
+func setLogger() {
+	// Открываем файл для записи логов
+	logFile, err := os.OpenFile("wg_api.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		lg.Fatalf("Ошибка при открытии файла: %v", err)
+	}
+	// Настраиваем логер на запись в файл
+	lg.SetOutput(logFile)
+}
+
 func loadEnv() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatalf("Ошибка загрузки .env файла: %v", err)
 	}
 	token = os.Getenv("BOT_TOKEN")
+	preExpiredMsg = os.Getenv("PRE_EXPIRED_MSG")
+	expiredMsg = os.Getenv("EXPIRED_MSG")
+	preDeadMsg = os.Getenv("PRE_DEAD_MSG")
+	deadMsg = os.Getenv("DEAD_MSG")
+
+	setLogger()
 }
 
 func generateKeys() (string, string, error) {
@@ -115,7 +131,7 @@ func StartExpirationChecker(interval time.Duration) {
 }
 
 func escapeMarkdownV2(text string) string {
-	specialChars := []string{"_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
+	specialChars := []string{"_", "[", "]", "(", ")", "~", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
 	for _, char := range specialChars {
 		text = strings.ReplaceAll(text, char, "\\"+char)
 	}

@@ -221,49 +221,69 @@ func getTunnelList(cons ConsGorm) ([]PeerGorm, error) {
 	return foundedPeers, nil
 }
 
+func changePeerStatusInORM(peer PeerGorm, status string) error {
+	db := OpenDB()
+	var resPeer PeerGorm
+	db.Where("public_key = ?", peer.PublicKey).First(&resPeer)
+	if resPeer.PublicKey == "" {
+		return fmt.Errorf("Failed to find peer with public_key %s", peer.PublicKey)
+	}
+	resPeer.Status = status
+	db.Save(&resPeer)
+	return nil
+}
+
 func CheckExpiration() error {
 	db := OpenDB()
 	var resPeers []PeerGorm
 	db.Find(&resPeers, "status != ?", "Virgin")
 	if len(resPeers) == 0 {
-		return fmt.Errorf("Failed to find all consumers in database!")
+		return fmt.Errorf("Failed to find peers without status 'Virgin'")
 	}
 
 	for _, peer := range resPeers {
 		days := time.Since(peer.ExpirationTime).Hours() / 24
 		switch {
-		case days > float64(-1) && days < float64(0):
-			lg.Printf("PRE_RESTRICTED %s DAYS: %f", peer.AllowedIP, days)
+		case days > float64(-1) && days < float64(0) && peer.Status == "Paid":
+			lg.Printf("PRE_EXPIRED %s DAYS: %f", peer.AllowedIP, days)
 			ChatID, err := FindChatIDsByPeerIDs(peer.ID)
 			if err != nil {
-				return fmt.Errorf("Failed to find ChatIDs of Peers %s: %s", peer.ID, err)
+				return fmt.Errorf("Failed to find ChatID of Peer %d: %s", peer.ID, err)
 			}
-			name := escapeMarkdownV2(peer.Name)
-			msg := fmt.Sprintf("Уважаемый пользователь\\!\n\n"+
-				"Обращаем Ваше внимание, что конфиг `%s` *истекает в течение суток*", name)
-
+			err = changePeerStatusInORM(peer, "Pre_Expired")
+			if err != nil {
+				return fmt.Errorf("Failed to change Peer status %s  status: %s", peer.Name, err)
+			}
+			msg := fmt.Sprintf(escapeMarkdownV2(preExpiredMsg), peer.Name)
 			go sendMessage(ChatID, msg)
 
-		case days >= float64(0) && days < float64(7):
-			lg.Printf("RESTRICTED %s DAYS: %f", peer.AllowedIP, days)
+		case days >= float64(0) && days < float64(6) && peer.Status == "Pre_Expired":
+			lg.Printf("EXPIRED %s DAYS: %f", peer.AllowedIP, days)
 			err := RestrictPeer(peer)
 			if err != nil {
-				return fmt.Errorf("Failed to restrict peer %d: %s", peer.ID, err)
+				return fmt.Errorf("Failed to restrict Peer %d: %s", peer.ID, err)
 			}
 			ChatID, err := FindChatIDsByPeerIDs(peer.ID)
 			if err != nil {
-				return fmt.Errorf("Failed to find ChatIDs of Peers %s: %s", peer.ID, err)
+				return fmt.Errorf("Failed to find ChatID of Peer %d: %s", peer.ID, err)
 			}
-
-			name := escapeMarkdownV2(peer.Name)
-			msg := fmt.Sprintf("Уважаемый пользователь\\!\n\n"+
-				"Обращаем Ваше внимание, что конфиг `%s` истёк\\. "+
-				"*Если он не будет продлён в течение 7 дней, то, к сожалению "+
-				"мы будем вынуждены безвовратно удалить его с нашего севера*", name)
-
+			msg := fmt.Sprintf(escapeMarkdownV2(expiredMsg), peer.Name)
 			go sendMessage(ChatID, msg)
 
-		case days >= float64(7) && days < float64(8):
+		case days >= float64(6) && days < float64(7) && peer.Status == "Expired":
+			lg.Printf("PRE_DEAD %s DAYS: %f", peer.AllowedIP, days)
+			ChatID, err := FindChatIDsByPeerIDs(peer.ID)
+			if err != nil {
+				return fmt.Errorf("Failed to find ChatID of Peer %d: %s", peer.ID, err)
+			}
+			err = changePeerStatusInORM(peer, "Pre_Dead")
+			if err != nil {
+				return fmt.Errorf("Failed to change Peer %s  status: %s", peer.Name, err)
+			}
+			msg := fmt.Sprintf(escapeMarkdownV2(preDeadMsg), peer.Name)
+			go sendMessage(ChatID, msg)
+
+		case days >= float64(7) && days < float64(8) && peer.Status == "Pre_Dead":
 			lg.Printf("KILLING %s DAYS: %f", peer.AllowedIP, days)
 			err := KillAndRegenPeer(peer)
 			if err != nil {
@@ -271,13 +291,9 @@ func CheckExpiration() error {
 			}
 			ChatID, err := FindChatIDsByPeerIDs(peer.ID)
 			if err != nil {
-				return fmt.Errorf("Failed to find ChatIDs of Peers %s: %s", peer.ID, err)
+				return fmt.Errorf("Failed to find ChatIDs of Peers %d: %s", peer.ID, err)
 			}
-			name := escapeMarkdownV2(peer.Name)
-			msg := fmt.Sprintf("Уважаемый пользователь\\!\n\n"+
-				"Обращаем Ваше внимание, что конфиг `%s` не был оплачен в течение 7 дней "+
-				"и теперь *безвозратно удален с нашего сервера*", name)
-
+			msg := fmt.Sprintf(escapeMarkdownV2(deadMsg), peer.Name)
 			go sendMessage(ChatID, msg)
 
 		}

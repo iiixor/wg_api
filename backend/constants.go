@@ -20,5 +20,9 @@ const (
 )
 
 var (
-	token string
+	token         string
+	preExpiredMsg string
+	expiredMsg    string
+	preDeadMsg    string
+	deadMsg       string
 )
