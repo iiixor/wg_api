@@ -130,8 +130,6 @@ func StartExpirationChecker(interval time.Duration) {
 	}
 }
 
-func Start
-
 func escapeMarkdownV2(text string) string {
 	specialChars := []string{"_", "[", "]", "(", ")", "~", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
 	for _, char := range specialChars {
