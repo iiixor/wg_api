@@ -16,7 +16,7 @@ func initServer() {
 	r.Use(middleware.Logger)
 	r.Get("/GetConsumerInfo/?={Username}", GetConsumerInfoAPI)
 	r.Get("/GetVacantPeer/", GetVacantPeerAPI)
-	r.Get("/GrantPeerToConsumer/{Username}", GrantPeerToConsumerAPI)
+	r.Get("/GrantPeerToConsumer/{Username}+{ChatID}", GrantPeerToConsumerAPI)
 	r.Get("/Init/ReadWgCreds", ReadWgCredsAPI)
 	r.Get("/Init/GenAndWritePeers", GenAndWritePeersAPI)
 	r.Get("/GiveLastCfg/{Username}", GiveLastPaidPeerAPI)
@@ -78,6 +78,7 @@ func GetVacantPeerAPI(w http.ResponseWriter, r *http.Request) {
 func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request) {
 	var consumer ConsGorm
 	consumer.Username = chi.URLParam(r, "Username")
+	consumer.ChatID = chi.URLParam(r, "ChatID")
 	var resPeer PeerGorm
 	_, resPeer, err := grantConsumerPeer(consumer)
 	if err != nil {

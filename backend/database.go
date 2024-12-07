@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -118,6 +119,12 @@ func AddMonthToPeerExpiration(peer PeerGorm) error {
 		return fmt.Errorf("Failed to find peer with id %d in database", peer.ID)
 	}
 	resPeer.ExpirationTime = resPeer.ExpirationTime.AddDate(0, 1, 0)
+	resPeer.Status = "Paid"
+	peer.AllowedIP = strings.ReplaceAll(peer.AllowedIP, "0.0.0.", "10.0.0.")
+	err := setPeer(resPeer)
+	if err != nil {
+		return fmt.Errorf("Failed to set Peer %s new info", peer.AllowedIP)
+	}
 	db.Save(&resPeer)
 	return nil
 }
