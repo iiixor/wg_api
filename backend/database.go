@@ -120,7 +120,7 @@ func AddMonthToPeerExpiration(peer PeerGorm) error {
 	}
 	resPeer.ExpirationTime = resPeer.ExpirationTime.AddDate(0, 1, 0)
 	resPeer.Status = "Paid"
-	peer.AllowedIP = strings.ReplaceAll(peer.AllowedIP, "0.0.0.", "10.0.0.")
+	resPeer.AllowedIP = strings.ReplaceAll(resPeer.AllowedIP, "0.0.0.", "10.0.0.")
 	err := setPeer(resPeer)
 	if err != nil {
 		return fmt.Errorf("Failed to set Peer %s new info", peer.AllowedIP)
