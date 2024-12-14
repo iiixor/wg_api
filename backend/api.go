@@ -22,6 +22,7 @@ func initServer() {
 	r.Get("/GiveLastCfg/{Username}", GiveLastPaidPeerAPI)
 	r.Get("/GetTunnelList/{Username}", GetTunnelListAPI)
 	r.Get("/ExtendPeer/{PeerID}", ExtendPeerAPI)
+	r.Get("/GetUserTrial/{Username}+{ChatID}", GetUserTrialAPI)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		resp.Message = fmt.Sprintln("Hello World!")
 		DrawJSON(w, resp, 200)
@@ -61,7 +62,7 @@ func GetConsumerInfoAPI(w http.ResponseWriter, r *http.Request) {
 
 func GetVacantPeerAPI(w http.ResponseWriter, r *http.Request) {
 	var vacantPeer PeerGorm
-	vacantPeer, err := GetVacantPeerFromORM()
+	vacantPeer, err := GetVacantPeerFromORM(1, 0)
 	if err != nil {
 		resp.Message = fmt.Sprintf("Failed to get vacant peer from database: %s", err)
 		DrawJSON(w, resp, 422)
@@ -80,7 +81,7 @@ func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request) {
 	consumer.Username = chi.URLParam(r, "Username")
 	consumer.ChatID = chi.URLParam(r, "ChatID")
 	var resPeer PeerGorm
-	_, resPeer, err := grantConsumerPeer(consumer)
+	_, resPeer, err := grantConsumerPeer(consumer, 1, 0)
 	if err != nil {
 		resp.Message = fmt.Sprintf("Failed to grant peer to consumer: %s", err)
 		DrawJSON(w, resp, 422)
@@ -95,6 +96,34 @@ func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request) {
 	var clientCfg WgConfig
 	clientCfg = createClientConfig(inter, resPeer)
 	DrawJSON(w, clientCfg, 200)
+}
+
+func GetUserTrialAPI(w http.ResponseWriter, r *http.Request) {
+	var consumer ConsGorm
+	consumer.Username = chi.URLParam(r, "Username")
+	consumer.ChatID = chi.URLParam(r, "ChatID")
+	var resPeer PeerGorm
+	if UserExists(consumer) {
+		resp.Message = fmt.Sprintf("User @%s already exists!", consumer.Username)
+		DrawJSON(w, resp, 401)
+		return
+	}
+	_, resPeer, err := grantConsumerPeer(consumer, 0, 3)
+	if err != nil {
+		resp.Message = fmt.Sprintf("Failed to grant peer to consumer: %s", err)
+		DrawJSON(w, resp, 422)
+		return
+	}
+	inter, err := GetInterfaceInfoFromORM()
+	if err != nil {
+		resp.Message = fmt.Sprintf("Failed to get interface info from database :%s", err)
+		DrawJSON(w, resp, 422)
+		return
+	}
+	var clientCfg WgConfig
+	clientCfg = createClientConfig(inter, resPeer)
+	DrawJSON(w, clientCfg, 200)
+
 }
 
 func ReadWgCredsAPI(w http.ResponseWriter, r *http.Request) {

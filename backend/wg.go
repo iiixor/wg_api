@@ -95,12 +95,12 @@ func writePeersIntoWgConf(filePath string, peers []PeerGorm) error {
 	}
 	return nil
 }
-func grantConsumerPeer(cons ConsGorm) (ConsGorm, PeerGorm, error) {
+
+func grantConsumerPeer(cons ConsGorm, month, days int) (ConsGorm, PeerGorm, error) {
 	var vacantPeer PeerGorm
-	vacantPeer, err := GetVacantPeerFromORM()
+	vacantPeer, err := GetVacantPeerFromORM(month, days)
 	if err != nil {
-		fmt.Errorf("Failed to get vacant peer from database: %s", err)
-		return ConsGorm{}, PeerGorm{}, err
+		return ConsGorm{}, PeerGorm{}, fmt.Errorf("Failed to get vacant peer from database: %s", err)
 	}
 	var resCons ConsGorm
 	var resPeer PeerGorm
@@ -110,6 +110,7 @@ func grantConsumerPeer(cons ConsGorm) (ConsGorm, PeerGorm, error) {
 		return ConsGorm{}, PeerGorm{}, err
 	}
 	return resCons, resPeer, nil
+
 }
 
 func GenAndWritePeers() error {

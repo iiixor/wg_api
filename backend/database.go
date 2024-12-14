@@ -101,12 +101,12 @@ func GetConsumerInfoDB(consumer ConsGorm) (ConsGorm, error) {
 	return res, nil
 }
 
-func GetVacantPeerFromORM() (PeerGorm, error) {
+func GetVacantPeerFromORM(month, days int) (PeerGorm, error) {
 	var vacantPeer PeerGorm
 	db := OpenDB()
-	db.Where("status <> ?", "Paid").First(&vacantPeer)
+	db.Where("status = ?", "Virgin").First(&vacantPeer)
 	vacantPeer.Status = "Paid"
-	vacantPeer.ExpirationTime = time.Now().AddDate(0, 1, 0)
+	vacantPeer.ExpirationTime = time.Now().AddDate(0, month, days)
 	db.Save(&vacantPeer)
 	return vacantPeer, nil
 }
@@ -182,6 +182,16 @@ func FindCons(cons ConsGorm) ([]ConsGorm, error) {
 		return []ConsGorm{}, err
 	}
 	return resCons, nil
+}
+
+func UserExists(cons ConsGorm) bool {
+	db := OpenDB()
+	var resCons ConsGorm
+	db.Find(&resCons, "chat_id = ?", cons.ChatID)
+	if resCons.ChatID == "" {
+		return false
+	}
+	return true
 }
 
 func FindChatIDsByPeerIDs(PeerIDs uint) (int64, error) {
