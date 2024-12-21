@@ -137,3 +137,11 @@ func escapeMarkdownV2(text string) string {
 	}
 	return text
 }
+
+func turnOffPeer(peer string) string {
+	return strings.Replace(peer, "10.", "0.", 1)
+}
+
+func turnOnPeer(peer string) string {
+	return strings.Replace(peer, "0.", "10.", 1)
+}

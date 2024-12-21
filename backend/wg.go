@@ -63,8 +63,7 @@ func setPeer(peer PeerGorm) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error executing command set: %v", err)
 	}
-	lg.Println(peer.AllowedIP)
-	lg.Println(peer.PublicKey)
+	lg.Printf("Peer  set: public key: %s allowed-ip: %s", peer.PublicKey, peer.AllowedIP)
 	cmd = exec.Command("wg-quick", "save", "wg0")
 	// Запускаем команду и возвращаем ошибку, если она произошла
 	if err := cmd.Run(); err != nil {
@@ -141,7 +140,7 @@ func GiveLastPaidPeer(cons ConsGorm) (ConsGorm, PeerGorm, error) {
 
 func RestrictPeer(peer PeerGorm) error {
 	lg.Println(peer.AllowedIP)
-	peer.AllowedIP = strings.ReplaceAll(peer.AllowedIP, "10.0.0.", "0.0.0.")
+	peer.AllowedIP = turnOffPeer(peer.AllowedIP)
 	peer.Status = "Expired"
 	lg.Println(peer.AllowedIP)
 	cmd := exec.Command("wg", "set", "wg0", "peer", peer.PublicKey, "allowed-ips", peer.AllowedIP)
