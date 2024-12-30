@@ -40,4 +40,12 @@ type Message struct {
 
 var messageChannel chan Message
 
-var lg *log.Logger = log.New(os.Stdout, "INFO: ", log.Ltime|log.Lmicroseconds)
+var lg *log.Logger = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lmicroseconds)
+
+var lgError *log.Logger = log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lmicroseconds)
+
+var lgAPI *log.Logger = log.New(os.Stdout, "API: ", log.Ldate|log.Ltime|log.Lmicroseconds)
+
+var lgORM *log.Logger = log.New(os.Stdout, "ORM: ", log.Ldate|log.Ltime|log.Lmicroseconds)
+
+var lgWG *log.Logger = log.New(os.Stdout, "WG: ", log.Ldate|log.Ltime|log.Lmicroseconds)

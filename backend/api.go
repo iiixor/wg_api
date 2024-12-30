@@ -84,17 +84,20 @@ func GrantPeerToConsumerAPI(w http.ResponseWriter, r *http.Request) {
 	_, resPeer, err := grantConsumerPeer(consumer, 1, 0)
 	if err != nil {
 		resp.Message = fmt.Sprintf("Failed to grant peer to consumer: %s", err)
+		lg.Printf("Failed to grant peer to consumer: %s", err)
 		DrawJSON(w, resp, 422)
 		return
 	}
 	inter, err := GetInterfaceInfoFromORM()
 	if err != nil {
 		resp.Message = fmt.Sprintf("Failed to get interface info from database :%s", err)
+		lg.Printf("Failed to get interface info from database :%s", err)
 		DrawJSON(w, resp, 422)
 		return
 	}
 	var clientCfg WgConfig
 	clientCfg = createClientConfig(inter, resPeer)
+	lg.Printf("User @%s has paid peer. Peer: %s expiration_time: %s allowed_ip: %s", consumer.Username, resPeer.Name, resPeer.ExpirationTime, resPeer.AllowedIP)
 	DrawJSON(w, clientCfg, 200)
 }
 
@@ -105,25 +108,28 @@ func GetUserTrialAPI(w http.ResponseWriter, r *http.Request) {
 	var resPeer PeerGorm
 	if UserExists(consumer) {
 		resp.Message = fmt.Sprintf("User @%s already exists!", consumer.Username)
+		lgAPI.Printf("User @%s tried to get trial again!", consumer.Username)
 		DrawJSON(w, resp, 401)
 		return
 	}
 	_, resPeer, err := grantConsumerPeer(consumer, 0, 3)
 	if err != nil {
 		resp.Message = fmt.Sprintf("Failed to grant peer to consumer: %s", err)
+		lgError.Printf("Failed to grant peer to consumer: %s", err)
 		DrawJSON(w, resp, 422)
 		return
 	}
 	inter, err := GetInterfaceInfoFromORM()
 	if err != nil {
 		resp.Message = fmt.Sprintf("Failed to get interface info from database :%s", err)
+		lgError.Printf("Failed to get interface info from database :%s", err)
 		DrawJSON(w, resp, 422)
 		return
 	}
 	var clientCfg WgConfig
 	clientCfg = createClientConfig(inter, resPeer)
+	lgAPI.Printf("User @%s get trial. Peer: %s expiration_time: %s allowed_ip: %s", consumer.Username, resPeer.Name, resPeer.ExpirationTime, resPeer.AllowedIP)
 	DrawJSON(w, clientCfg, 200)
-
 }
 
 func ReadWgCredsAPI(w http.ResponseWriter, r *http.Request) {
@@ -187,6 +193,7 @@ func ExtendPeerAPI(w http.ResponseWriter, r *http.Request) {
 	uintID, err := strconv.ParseUint(strID, 10, 32)
 	if err != nil {
 		resp.Message = fmt.Sprintf("Failed to convert str to uint: %s", err)
+		lgError.Printf("Failed to convert str to uint: %s", err)
 		DrawJSON(w, resp, 422)
 		return
 	}
@@ -194,9 +201,11 @@ func ExtendPeerAPI(w http.ResponseWriter, r *http.Request) {
 	err = AddMonthToPeerExpiration(peer)
 	if err != nil {
 		resp.Message = fmt.Sprintf("Failed to add month to peer expiration: %s", err)
+		lgError.Printf("Failed to add month to peer expiration: %s", err)
 		DrawJSON(w, resp, 422)
 		return
 	}
 	resp.Message = fmt.Sprintf("1 Month added successfully to peer ID: %d", peer.ID)
+	lgAPI.Printf("1 Month added successfully to peer ID: %d", peer.ID)
 	DrawJSON(w, resp, 200)
 }

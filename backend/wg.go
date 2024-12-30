@@ -53,7 +53,6 @@ func setPeers(peers []PeerGorm) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error executing command save: %v", err)
 	}
-	lg.Println("wg-quick")
 	return nil
 }
 
@@ -61,15 +60,16 @@ func setPeer(peer PeerGorm) error {
 	cmd := exec.Command("wg", "set", "wg0", "peer", peer.PublicKey, "allowed-ips", peer.AllowedIP)
 	// Запускаем команду и возвращаем ошибку, если она произошла
 	if err := cmd.Run(); err != nil {
+		lgError.Printf("error executing command set: %v", err)
 		return fmt.Errorf("error executing command set: %v", err)
 	}
-	lg.Printf("Peer  set: public key: %s allowed-ip: %s", peer.PublicKey, peer.AllowedIP)
 	cmd = exec.Command("wg-quick", "save", "wg0")
 	// Запускаем команду и возвращаем ошибку, если она произошла
 	if err := cmd.Run(); err != nil {
+		lgError.Printf("error executing command save: %v", err)
 		return fmt.Errorf("error executing command save: %v", err)
 	}
-	lg.Println("wg-quick")
+	lgWG.Printf("Peer %s was set allowed_ip %s", peer.Name, peer.AllowedIP)
 	return nil
 }
 
@@ -99,15 +99,18 @@ func grantConsumerPeer(cons ConsGorm, month, days int) (ConsGorm, PeerGorm, erro
 	var vacantPeer PeerGorm
 	vacantPeer, err := GetVacantPeerFromORM(month, days)
 	if err != nil {
+		lgError.Printf("Failed to get vacant peer from database: %s", err)
 		return ConsGorm{}, PeerGorm{}, fmt.Errorf("Failed to get vacant peer from database: %s", err)
 	}
 	var resCons ConsGorm
 	var resPeer PeerGorm
 	resCons, resPeer, err = grantConsumerPeerInORM(cons, vacantPeer)
 	if err != nil {
+		lgError.Printf("Failed to grant peer to consumer in database: %s", err)
 		err = fmt.Errorf("Failed to grant peer to consumer in database: %s", err)
 		return ConsGorm{}, PeerGorm{}, err
 	}
+	lgWG.Printf("User @%s was granted peer: %s expiration_time %s allowed_ip %s successfully!", resCons.Username, resPeer.Name, resPeer.ExpirationTime, resPeer.AllowedIP)
 	return resCons, resPeer, nil
 
 }
@@ -139,24 +142,25 @@ func GiveLastPaidPeer(cons ConsGorm) (ConsGorm, PeerGorm, error) {
 }
 
 func RestrictPeer(peer PeerGorm) error {
-	lg.Println(peer.AllowedIP)
 	peer.AllowedIP = turnOffPeer(peer.AllowedIP)
 	peer.Status = "Expired"
-	lg.Println(peer.AllowedIP)
 	cmd := exec.Command("wg", "set", "wg0", "peer", peer.PublicKey, "allowed-ips", peer.AllowedIP)
 	// Запускаем команду и возвращаем ошибку, если она произошла
 	if err := cmd.Run(); err != nil {
+		lgError.Printf("error executing command set: %v", err)
 		return fmt.Errorf("error executing command set: %v", err)
 	}
 	cmd = exec.Command("wg-quick", "save", "wg0")
 	// Запускаем команду и возвращаем ошибку, если она произошла
 	if err := cmd.Run(); err != nil {
+		lgError.Printf("error executing command save: %v", err)
 		return fmt.Errorf("error executing command save: %v", err)
 	}
 	if err := RestictPeerInORM(peer); err != nil {
+		lgError.Printf("Failed to restrict peer %d in ORM: %s", peer.ID, err)
 		return fmt.Errorf("Failed to restrict peer %d in ORM: %s", peer.ID, err)
 	}
-	lg.Printf("Peer was restircted succefully %s", peer.PublicKey)
+	lgError.Printf("Peer %s was restircted succefully. Allowed_ip: %s", peer.PublicKey, peer.AllowedIP)
 	return nil
 }
 

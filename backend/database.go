@@ -115,6 +115,7 @@ func AddMonthToPeerExpiration(peer PeerGorm) error {
 	var resPeer PeerGorm
 	db.Where("id = ?", peer.ID).First(&resPeer)
 	if resPeer.ID == 0 {
+		lgError.Printf("Failed to find peer with id %d in database", peer.ID)
 		return fmt.Errorf("Failed to find peer with id %d in database", peer.ID)
 	}
 	resPeer.ExpirationTime = resPeer.ExpirationTime.AddDate(0, 1, 0)
@@ -122,9 +123,11 @@ func AddMonthToPeerExpiration(peer PeerGorm) error {
 	resPeer.AllowedIP = turnOnPeer(resPeer.AllowedIP)
 	err := setPeer(resPeer)
 	if err != nil {
+		lgError.Printf("Failed to set Peer %s new info", resPeer.AllowedIP)
 		return fmt.Errorf("Failed to set Peer %s new info", resPeer.AllowedIP)
 	}
 	db.Save(&resPeer)
+	lgORM.Printf("Peer: %s expiration_time: %s allowed_ip: %s was saved to ORM", resPeer.Name, resPeer.ExpirationTime, resPeer.AllowedIP)
 	return nil
 }
 
@@ -148,10 +151,10 @@ func writePeersToORM(peers []PeerGorm) error {
 func grantConsumerPeerInORM(cons ConsGorm, peer PeerGorm) (ConsGorm, PeerGorm, error) {
 	db := OpenDB()
 	peer.Name = fmt.Sprintf("%d-%s-%s", peer.ID, cons.Username, time.Now().Format("2006-01-02-15-04-05"))
-	lg.Println(peer.Name)
 	cons.PeerID = uint32(peer.ID)
 	db.Save(&cons)
 	db.Save(&peer)
+	lgORM.Printf("Peer: %s allowed_ip %s was granted to @%s", peer.Name, peer.AllowedIP, cons.Username)
 	return cons, peer, nil
 }
 
@@ -340,5 +343,6 @@ func KillAndRegenPeerInORM(oldPeer PeerGorm) (PeerGorm, error) {
 	oldPeer = RegenOnePeer(oldPeer)
 
 	db.Save(&oldPeer)
+	lgORM.Printf("Regened peer %s expiration_time %s allowed_ip %s was saved to ORM", oldPeer.Name, oldPeer.ExpirationTime, oldPeer.AllowedIP)
 	return oldPeer, nil
 }

@@ -21,6 +21,10 @@ func setLogger() {
 	}
 	// Настраиваем логер на запись в файл
 	lg.SetOutput(logFile)
+	lgWG.SetOutput(logFile)
+	lgORM.SetOutput(logFile)
+	lgError.SetOutput(logFile)
+	lgAPI.SetOutput(logFile)
 }
 
 func loadEnv() {
@@ -91,9 +95,10 @@ func RegenOnePeer(oldPeer PeerGorm) PeerGorm {
 	newPeer.Name = publicKey
 	newPeer.PublicKey = publicKey
 	newPeer.PrivateKey = privateKey
-	newPeer.AllowedIP = strings.ReplaceAll(oldPeer.AllowedIP, "0.0.0.", "10.0.0.")
+	newPeer.AllowedIP = turnOnPeer(oldPeer.AllowedIP)
 	newPeer.Status = "Virgin"
 	newPeer.InterfaceID = 1
+	lg.Printf("New peer: %s pubKey: %s allowed_ip %s was generated! Old name: %s old allowed_ip: %s", newPeer.Name, newPeer.PublicKey, newPeer.AllowedIP, oldPeer.Name, oldPeer.AllowedIP)
 	return newPeer
 }
 
@@ -137,11 +142,16 @@ func escapeMarkdownV2(text string) string {
 	}
 	return text
 }
-
 func turnOffPeer(peer string) string {
-	return strings.Replace(peer, "10.", "0.", 1)
+	if strings.HasPrefix(peer, "10.") {
+		return strings.Replace(peer, "10.", "0.", 1)
+	}
+	return peer
 }
 
 func turnOnPeer(peer string) string {
-	return strings.Replace(peer, "0.", "10.", 1)
+	if strings.HasPrefix(peer, "0.") {
+		return strings.Replace(peer, "0.", "10.", 1)
+	}
+	return peer
 }
