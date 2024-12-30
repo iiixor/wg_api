@@ -1,3 +1,4 @@
 *.log
 wg_api
 .env
+wg_api.log
