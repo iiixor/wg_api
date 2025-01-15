@@ -105,7 +105,7 @@ func GetVacantPeerFromORM(month, days int) (PeerGorm, error) {
 	db := OpenDB()
 	db.Where("status = ?", "Virgin").First(&vacantPeer)
 	vacantPeer.Status = "Paid"
-	vacantPeer.ExpirationTime = time.Now().AddDate(0, month, days)
+	vacantPeer.ExpirationTime = time.Now().AddDate(1, month, days)
 	db.Save(&vacantPeer)
 	return vacantPeer, nil
 }
@@ -336,13 +336,24 @@ func RestictPeerInORM(peer PeerGorm) error {
 
 func KillAndRegenPeerInORM(oldPeer PeerGorm) (PeerGorm, error) {
 	db := OpenDB()
+	// Find the old peer in the database
 	db.Find(&oldPeer, "public_key = ?", oldPeer.PublicKey)
 	if oldPeer.ID == 0 {
 		return PeerGorm{}, fmt.Errorf("Failed to find peer %s", oldPeer.PublicKey)
 	}
+
+	// Delete the association of this peer with any client in the clients database
+	result := db.Where("peer_id = ?", oldPeer.ID).Delete(&ConsGorm{})
+	if result.Error != nil {
+		return PeerGorm{}, fmt.Errorf("Failed to delete client association for peer %s: %s", oldPeer.PublicKey, result.Error)
+	}
+
+	// Regenerate the peer
 	oldPeer = RegenOnePeer(oldPeer)
 
+	// Save the regenerated peer back to the database
 	db.Save(&oldPeer)
 	lgORM.Printf("Regened peer %s expiration_time %s allowed_ip %s was saved to ORM", oldPeer.Name, oldPeer.ExpirationTime, oldPeer.AllowedIP)
+
 	return oldPeer, nil
 }
