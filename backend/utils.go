@@ -136,12 +136,19 @@ func StartExpirationChecker(interval time.Duration) {
 }
 
 func escapeMarkdownV2(text string) string {
-	specialChars := []string{"_", "[", "]", "(", ")", "~", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
+	// Полный список специальных символов для MarkdownV2
+	specialChars := []string{
+		"_", "*", "[", "]", "(", ")", "~", "`",
+		">", "#", "+", "-", "=", "|", "{", "}",
+		".", "!",
+	}
+
 	for _, char := range specialChars {
 		text = strings.ReplaceAll(text, char, "\\"+char)
 	}
 	return text
 }
+
 func turnOffPeer(peer string) string {
 	if strings.HasPrefix(peer, "10.") {
 		return strings.Replace(peer, "10.", "0.", 1)

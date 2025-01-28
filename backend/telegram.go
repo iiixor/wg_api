@@ -24,7 +24,7 @@ func runBot(bot *tgbotapi.BotAPI) {
 		select {
 		case msg := <-messageChannel:
 			// Создаем сообщение для отправки
-			tgMessage := tgbotapi.NewMessage(msg.ChatID, msg.Content)
+			tgMessage := tgbotapi.NewMessage(msg.ChatID, escapeMarkdownV2(msg.Content))
 
 			tgMessage.ParseMode = "MarkdownV2"
 			// Отправляем сообщение в Telegram
