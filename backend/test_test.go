@@ -98,7 +98,11 @@ func TestEscapeMarkdownV2(t *testing.T) {
 			input:    "Hello!",
 			expected: "Hello\\!",
 		},
-
+		{
+			name:     "Real Name",
+			input:    "2-Even_forgotten_my_name-2025-01-28-17-28-15",
+			expected: "2\\-Even\\_forgotten\\_my\\_name\\-2025\\-01\\-28\\-17\\-28\\-15",
+		},
 		// Комбинированные случаи
 		{
 			name:     "Mixed characters",

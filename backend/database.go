@@ -37,6 +37,8 @@ type InterfaceGorm struct {
 	PublicKey  string
 }
 
+var DB *gorm.DB
+
 func initDB() {
 	err := CreateDbs()
 	if err != nil {
