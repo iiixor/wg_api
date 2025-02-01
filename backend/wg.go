@@ -33,7 +33,7 @@ func createClientConfig(inter InterfaceGorm, peer PeerGorm) WgConfig {
 	cfg.Interface.DNS = DNS
 	cfg.Peer.PublicKey = inter.PublicKey
 	cfg.Peer.AllowedIPs = "0.0.0.0/0"
-	cfg.Peer.Endpoint = Endpoint
+	cfg.Peer.Endpoint = WG_ENDPOINT
 	cfg.Peer.PersistentKeepalive = "21"
 	return cfg
 }
@@ -164,27 +164,31 @@ func RestrictPeer(peer PeerGorm) error {
 	return nil
 }
 
-func KillAndRegenPeer(oldPeer PeerGorm) error {
-	newPeer, err := KillAndRegenPeerInORM(oldPeer)
+func KillAndRegenPeer(oldPeer PeerGorm) (ConsGorm, error) {
+	// Регенерируем пира в ORM и получаем обновлённого пира и удалённую ассоциацию
+	newPeer, oldCons, err := KillAndRegenPeerInORM(oldPeer)
 	if err != nil {
-		return fmt.Errorf("Failed to kill and regen peer in ORM %s: %s", oldPeer.PublicKey, err)
+		return ConsGorm{}, fmt.Errorf("failed to kill and regen peer in ORM %s: %v", oldPeer.PublicKey, err)
 	}
 
+	// Устанавливаем нового пира в WireGuard (wg set wg0 peer <newPeer.PublicKey> allowed-ips <newPeer.AllowedIP>)
 	cmd := exec.Command("wg", "set", "wg0", "peer", newPeer.PublicKey, "allowed-ips", newPeer.AllowedIP)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error executing command set: %v", err)
+		return ConsGorm{}, fmt.Errorf("error executing command set: %v", err)
 	}
 
+	// Удаляем старого пира из WireGuard (wg set wg0 peer <oldPeer.PublicKey> remove)
 	cmd = exec.Command("wg", "set", "wg0", "peer", oldPeer.PublicKey, "remove")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error executing command set: %v", err)
+		return ConsGorm{}, fmt.Errorf("error executing command remove: %v", err)
 	}
 
+	// Сохраняем изменения в конфигурации WireGuard (wg-quick save wg0)
 	cmd = exec.Command("wg-quick", "save", "wg0")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error executing command save: %v", err)
+		return ConsGorm{}, fmt.Errorf("error executing command save: %v", err)
 	}
 
-	lg.Printf("Peer %s was killed and regened to %s", oldPeer.PublicKey, newPeer.PublicKey)
-	return nil
+	lgWG.Printf("Peer %s was killed and regened to %s", oldPeer.PublicKey, newPeer.PublicKey)
+	return oldCons, nil
 }

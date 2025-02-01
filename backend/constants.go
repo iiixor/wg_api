@@ -1,17 +1,9 @@
 package main
 
 const (
-	host     = "localhost"
-	user     = "postgres"
-	password = "Egr295_psql"
-	dbName   = "wg_api"
-)
-
-const (
 	MTU       = "1342"
 	DNS       = "1.1.1.1"
 	AllowedIP = "0.0.0.0/0"
-	Endpoint  = "45.142.214.132:51820"
 )
 
 const (
@@ -25,4 +17,9 @@ var (
 	expiredMsg    string
 	preDeadMsg    string
 	deadMsg       string
+	DB_HOST       string
+	DB_USER       string
+	DB_PASSWORD   string
+	DB_NAME       string
+	WG_ENDPOINT   string
 )

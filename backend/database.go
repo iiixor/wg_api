@@ -37,7 +37,99 @@ type InterfaceGorm struct {
 	PublicKey  string
 }
 
-var DB *gorm.DB
+type Database struct {
+	*gorm.DB
+}
+
+var DB *Database
+
+func openDb(dsn string) (*gorm.DB, error) {
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
+// Конструктор обёртки Database
+func dbConstruct(dsn string) (*Database, error) {
+	db, err := openDb(dsn)
+	if err != nil {
+		return nil, err
+	}
+	return &Database{DB: db}, nil
+}
+
+func (d *Database) CreateTestLines() error {
+	now := time.Now()
+
+	// Полное удаление всех записей из таблиц ConsGorm и PeerGorm
+	if err := d.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&ConsGorm{}).Error; err != nil {
+		return err
+	}
+	if err := d.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&PeerGorm{}).Error; err != nil {
+		return err
+	}
+
+	// Определяем набор исходных данных для пиров
+	peerDefs := []struct {
+		ID         int
+		Name       string
+		Status     string
+		AllowedIP  string
+		Expiration time.Duration // длительность, на которую нужно сместить текущее время
+	}{
+		{ID: 1, Name: "Tommorow", Status: "Paid", AllowedIP: "10.0.0.55/32", Expiration: 24 * time.Hour},
+		{ID: 2, Name: "Today", Status: "Pre_Expired", AllowedIP: "10.0.0.55/32", Expiration: 0},
+		{ID: 3, Name: "6 days", Status: "Expired", AllowedIP: "0.0.0.55/32", Expiration: -6 * 24 * time.Hour},
+		{ID: 4, Name: "7 days", Status: "Pre_Dead", AllowedIP: "0.0.0.55/32", Expiration: -7 * 24 * time.Hour},
+	}
+
+	// Генерируем ключи и формируем срез записей PeerGorm
+	var peers []PeerGorm
+	for _, pd := range peerDefs {
+		privKey, pubKey, err := generateKeys()
+		if err != nil {
+			return fmt.Errorf("failed to generate keys for peer %s: %v", pd.Name, err)
+		}
+
+		peer := PeerGorm{
+			Model:          gorm.Model{ID: uint(pd.ID)},
+			Name:           pd.Name,
+			Status:         pd.Status,
+			AllowedIP:      pd.AllowedIP,
+			PublicKey:      pubKey,
+			PrivateKey:     privKey, // предполагается, что такое поле есть в PeerGorm
+			ExpirationTime: now.Add(pd.Expiration),
+		}
+		peers = append(peers, peer)
+	}
+
+	// Вставляем пировые записи пакетно в базу данных
+	if err := d.Create(&peers).Error; err != nil {
+		return err
+	}
+
+	// Вставляем записи ConsGorm для каждого PeerID
+	cons := []ConsGorm{
+		{Username: "@egrmk", ChatID: "837095301", PeerID: 1},
+		{Username: "@egrmk", ChatID: "837095301", PeerID: 2},
+		{Username: "@egrmk", ChatID: "837095301", PeerID: 3},
+		{Username: "@egrmk", ChatID: "837095301", PeerID: 4},
+	}
+	if err := d.Create(&cons).Error; err != nil {
+		return err
+	}
+
+	// Для каждого пира вызываем функцию setPeer, которая настраивает WireGuard
+	for _, peer := range peers {
+		if err := setPeer(peer); err != nil {
+			return fmt.Errorf("failed to set peer %s: %v", peer.Name, err)
+		}
+	}
+
+	return nil
+}
 
 func initDB() {
 	err := CreateDbs()
@@ -58,10 +150,10 @@ func CreateDbs() error {
 }
 
 func OpenDB() *gorm.DB {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable", host, user, password, dbName)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable", DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		lg.Printf("Failed to open db %s: %s", dbName, err)
+		lg.Printf("Failed to open db %s: %s", DB_NAME, err)
 		return nil
 	}
 	return db
@@ -264,6 +356,7 @@ func CheckExpiration() error {
 
 	for _, peer := range resPeers {
 		days := time.Since(peer.ExpirationTime).Hours() / 24
+		lg.Printf("%s -- days: %f", peer.Name, days)
 		switch {
 		case days > float64(-1) && days < float64(0) && peer.Status == "Paid":
 			lg.Printf("PRE_EXPIRED %s DAYS: %f", peer.AllowedIP, days)
@@ -306,16 +399,16 @@ func CheckExpiration() error {
 
 		case days >= float64(7) && days < float64(8) && peer.Status == "Pre_Dead":
 			lg.Printf("KILLING %s DAYS: %f", peer.AllowedIP, days)
-			err := KillAndRegenPeer(peer)
+			oldCons, err := KillAndRegenPeer(peer)
 			if err != nil {
 				return fmt.Errorf("Failed to kill peer %d regen new: %s", peer.ID, err)
 			}
-			ChatID, err := FindChatIDsByPeerIDs(peer.ID)
+			intChatID, err := strconv.Atoi(oldCons.ChatID)
 			if err != nil {
-				return fmt.Errorf("Failed to find ChatIDs of Peers %d: %s", peer.ID, err)
+				return fmt.Errorf("Failed to convert string %s to int", oldCons.ChatID)
 			}
 			msg := fmt.Sprintf(deadMsg, escapeMarkdownV2(peer.Name))
-			go sendMessage(ChatID, msg)
+			go sendMessage(int64(intChatID), msg)
 
 		}
 	}
@@ -336,26 +429,36 @@ func RestictPeerInORM(peer PeerGorm) error {
 	return nil
 }
 
-func KillAndRegenPeerInORM(oldPeer PeerGorm) (PeerGorm, error) {
+func KillAndRegenPeerInORM(oldPeer PeerGorm) (PeerGorm, ConsGorm, error) {
 	db := OpenDB()
-	// Find the old peer in the database
-	db.Find(&oldPeer, "public_key = ?", oldPeer.PublicKey)
-	if oldPeer.ID == 0 {
-		return PeerGorm{}, fmt.Errorf("Failed to find peer %s", oldPeer.PublicKey)
+
+	// Ищем пир по публичному ключу
+	if err := db.Where("public_key = ?", oldPeer.PublicKey).First(&oldPeer).Error; err != nil {
+		return PeerGorm{}, ConsGorm{}, fmt.Errorf("failed to find peer %s: %v", oldPeer.PublicKey, err)
 	}
 
-	// Delete the association of this peer with any client in the clients database
-	result := db.Where("peer_id = ?", oldPeer.ID).Delete(&ConsGorm{})
-	if result.Error != nil {
-		return PeerGorm{}, fmt.Errorf("Failed to delete client association for peer %s: %s", oldPeer.PublicKey, result.Error)
+	// Ищем клиентскую ассоциацию (ConsGorm) для найденного пира
+	var deletedCons ConsGorm
+	if err := db.Where("peer_id = ?", oldPeer.ID).First(&deletedCons).Error; err != nil {
+		return PeerGorm{}, ConsGorm{}, fmt.Errorf("failed to find client association for peer %s: %v", oldPeer.PublicKey, err)
 	}
 
-	// Regenerate the peer
+	// Удаляем найденную клиентскую ассоциацию
+	if err := db.Delete(&deletedCons).Error; err != nil {
+		return PeerGorm{}, ConsGorm{}, fmt.Errorf("failed to delete client association for peer %s: %v", oldPeer.PublicKey, err)
+	}
+
+	lgORM.Printf("Cons: %s with peer_id: %d was deleted from ORM", deletedCons.Username, deletedCons.PeerID)
+
+	// Генерируем новые ключи и регенерируем пир (функция RegenOnePeer должна обновлять необходимые поля)
 	oldPeer = RegenOnePeer(oldPeer)
 
-	// Save the regenerated peer back to the database
-	db.Save(&oldPeer)
+	// Сохраняем обновлённого пира в БД
+	if err := db.Save(&oldPeer).Error; err != nil {
+		return PeerGorm{}, ConsGorm{}, fmt.Errorf("failed to save regenerated peer %s: %v", oldPeer.PublicKey, err)
+	}
+
 	lgORM.Printf("Regened peer %s expiration_time %s allowed_ip %s was saved to ORM", oldPeer.Name, oldPeer.ExpirationTime, oldPeer.AllowedIP)
 
-	return oldPeer, nil
+	return oldPeer, deletedCons, nil
 }

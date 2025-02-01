@@ -37,6 +37,11 @@ func loadEnv() {
 	expiredMsg = os.Getenv("EXPIRED_MSG")
 	preDeadMsg = os.Getenv("PRE_DEAD_MSG")
 	deadMsg = os.Getenv("DEAD_MSG")
+	DB_USER = os.Getenv("DB_USER")
+	DB_NAME = os.Getenv("DB_NAME")
+	DB_PASSWORD = os.Getenv("DB_PASSWORD")
+	DB_HOST = os.Getenv("DB_HOST")
+	WG_ENDPOINT = os.Getenv("WG_ENDPOINT")
 
 	setLogger()
 }
