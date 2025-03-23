@@ -199,7 +199,7 @@ func GetVacantPeerFromORM(month, days int) (PeerGorm, error) {
 	db := OpenDB()
 	db.Where("status = ?", "Virgin").First(&vacantPeer)
 	vacantPeer.Status = "Paid"
-	vacantPeer.ExpirationTime = time.Now().AddDate(1, month, days)
+	vacantPeer.ExpirationTime = time.Now().AddDate(0, month, days)
 	db.Save(&vacantPeer)
 	return vacantPeer, nil
 }

@@ -129,6 +129,7 @@ func Expired(expDate time.Time) bool {
 
 func StartExpirationChecker(interval time.Duration) {
 	for {
+		lg.Println("---")
 		lg.Println("Started to check expiration...")
 		err := CheckExpiration()
 		if err != nil {
