@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wg-api
+    restart: always
+    depends_on:
+      - db
+      - wireguard
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=wireguard
+      - DB_SSLMODE=disable
+      - SERVER_PORT=8080
+      - WG_CONFIG_PATH=/etc/wireguard/wg0.conf
+      - WG_CONTAINER_NAME=wireguard
+      - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    networks:
+      - backend
+    volumes:
+      - wireguard-config:/etc/wireguard  # Общий том с WireGuard
+      - /var/run/docker.sock:/var/run/docker.sock  # Доступ к Docker daemon для управления контейнерами
+
+
+  wireguard:
+    image: linuxserver/wireguard
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Moscow
+      - SERVERURL=auto
+      - PEERS=0
+      - PEERDNS=auto
+      - ALLOWEDIPS=0.0.0.0/0
+      - INTERNAL_SUBNET=10.13.13.0/24
+    volumes:
+      - wireguard-config:/config
+    ports:
+      - "51820:51820/udp"
+    sysctls:
+      - net.ipv4.conf.all.forwarding=1
+      - net.ipv6.conf.all.forwarding=1
+    restart: unless-stopped
+
+
+
+  db:
+    image: postgres:16-alpine
+    container_name: wg-db
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=wireguard
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: wg-nginx
+    restart: always
+    ports:
+      - "8080:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - api
+    networks:
+      - backend
+      - frontend
+
+networks:
+  backend:
+    driver: bridge
+  frontend:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  wireguard-config:

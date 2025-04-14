@@ -1,0 +1,9 @@
+.git
+.gitignore
+.env
+*.md
+nginx/
+wg-config/
+docker-compose.yml
+Dockerfile
+*.sh
