@@ -16,7 +16,7 @@ func main() {
 	// 	lgORM.Fatalf("Failed to create test line: %v", err)
 	// }
 
-	go initBot()
+	// go initBot()
 	time.Sleep(time.Second * 2)
 	go StartExpirationChecker(24 * time.Hour)
 	initServer()

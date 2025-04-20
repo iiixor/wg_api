@@ -360,16 +360,16 @@ func CheckExpiration() error {
 		switch {
 		case days > float64(-1) && days < float64(0) && peer.Status == "Paid":
 			lg.Printf("PRE_EXPIRED %s DAYS: %f", peer.AllowedIP, days)
-			ChatID, err := FindChatIDsByPeerIDs(peer.ID)
-			if err != nil {
-				return fmt.Errorf("Failed to find ChatID of Peer %d: %s", peer.ID, err)
-			}
-			err = changePeerStatusInORM(peer, "Pre_Expired")
+			// ChatID, err := FindChatIDsByPeerIDs(peer.ID)
+			// if err != nil {
+			// 	return fmt.Errorf("Failed to find ChatID of Peer %d: %s", peer.ID, err)
+			// }
+			err := changePeerStatusInORM(peer, "Pre_Expired")
 			if err != nil {
 				return fmt.Errorf("Failed to change Peer status %s  status: %s", peer.Name, err)
 			}
-			msg := fmt.Sprintf(preExpiredMsg, escapeMarkdownV2(peer.Name))
-			go sendMessage(ChatID, msg)
+			// msg := fmt.Sprintf(preExpiredMsg, escapeMarkdownV2(peer.Name))
+			// go sendMessage(ChatID, msg)
 
 		case days >= float64(0) && days < float64(6) && peer.Status == "Pre_Expired":
 			lg.Printf("EXPIRED %s DAYS: %f", peer.AllowedIP, days)
@@ -377,25 +377,25 @@ func CheckExpiration() error {
 			if err != nil {
 				return fmt.Errorf("Failed to restrict Peer %d: %s", peer.ID, err)
 			}
-			ChatID, err := FindChatIDsByPeerIDs(peer.ID)
-			if err != nil {
-				return fmt.Errorf("Failed to find ChatID of Peer %d: %s", peer.ID, err)
-			}
-			msg := fmt.Sprintf(expiredMsg, escapeMarkdownV2(peer.Name))
-			go sendMessage(ChatID, msg)
+			// ChatID, err := FindChatIDsByPeerIDs(peer.ID)
+			// if err != nil {
+			// 	return fmt.Errorf("Failed to find ChatID of Peer %d: %s", peer.ID, err)
+			// }
+			// msg := fmt.Sprintf(expiredMsg, escapeMarkdownV2(peer.Name))
+			// go sendMessage(ChatID, msg)
 
 		case days >= float64(6) && days < float64(7) && peer.Status == "Expired":
 			lg.Printf("PRE_DEAD %s DAYS: %f", peer.AllowedIP, days)
-			ChatID, err := FindChatIDsByPeerIDs(peer.ID)
-			if err != nil {
-				return fmt.Errorf("Failed to find ChatID of Peer %d: %s", peer.ID, err)
-			}
-			err = changePeerStatusInORM(peer, "Pre_Dead")
+			// ChatID, err := FindChatIDsByPeerIDs(peer.ID)
+			// if err != nil {
+			// 	return fmt.Errorf("Failed to find ChatID of Peer %d: %s", peer.ID, err)
+			// }
+			err := changePeerStatusInORM(peer, "Pre_Dead")
 			if err != nil {
 				return fmt.Errorf("Failed to change Peer %s  status: %s", peer.Name, err)
 			}
-			msg := fmt.Sprintf(preDeadMsg, escapeMarkdownV2(peer.Name))
-			go sendMessage(ChatID, msg)
+			// msg := fmt.Sprintf(preDeadMsg, escapeMarkdownV2(peer.Name))
+			// go sendMessage(ChatID, msg)
 
 		case days >= float64(7) && days < float64(8) && peer.Status == "Pre_Dead":
 			lg.Printf("KILLING %s DAYS: %f", peer.AllowedIP, days)
@@ -403,12 +403,12 @@ func CheckExpiration() error {
 			if err != nil {
 				return fmt.Errorf("Failed to kill peer %d regen new: %s", peer.ID, err)
 			}
-			intChatID, err := strconv.Atoi(oldCons.ChatID)
+			_, err = strconv.Atoi(oldCons.ChatID)
 			if err != nil {
 				return fmt.Errorf("Failed to convert string %s to int", oldCons.ChatID)
 			}
-			msg := fmt.Sprintf(deadMsg, escapeMarkdownV2(peer.Name))
-			go sendMessage(int64(intChatID), msg)
+			// msg := fmt.Sprintf(deadMsg, escapeMarkdownV2(peer.Name))
+			// go sendMessage(int64(intChatID), msg)
 
 		}
 	}
