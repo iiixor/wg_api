@@ -1,4 +1,4 @@
-name: Main Foodgram workflow
+name: Main wg_api workflow
 on: push
 jobs:
   tests:
