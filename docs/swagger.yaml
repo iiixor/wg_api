@@ -1,0 +1,693 @@
+basePath: /api/v1
+definitions:
+  wg_api_internal_models.ConfigStatus:
+    enum:
+    - new
+    - paid
+    - expired
+    - deletion
+    type: string
+    x-enum-varnames:
+    - StatusNew
+    - StatusPaid
+    - StatusExpired
+    - StatusDeletion
+  wg_api_internal_models.Configuration:
+    properties:
+      allowed_ip:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      expiration_time:
+        type: string
+      id:
+        type: integer
+      interface_id:
+        description: Сервер
+        type: integer
+      latest_handshake:
+        type: string
+      name:
+        type: string
+      private_key:
+        type: string
+      public_key:
+        type: string
+      server:
+        $ref: '#/definitions/wg_api_internal_models.Server'
+      status:
+        $ref: '#/definitions/wg_api_internal_models.ConfigStatus'
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/wg_api_internal_models.User'
+      user_id:
+        type: integer
+    type: object
+  wg_api_internal_models.Server:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      private_key:
+        type: string
+      public_key:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  wg_api_internal_models.User:
+    properties:
+      chat_id:
+        type: string
+      configurations:
+        items:
+          $ref: '#/definitions/wg_api_internal_models.Configuration'
+        type: array
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      id:
+        type: integer
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: Support Team
+  description: API для управления конфигурациями WireGuard.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://example.com/terms/
+  title: WireGuard Manager API
+  version: "1.0"
+paths:
+  /configurations:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех конфигураций WireGuard
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/wg_api_internal_models.Configuration'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получение всех конфигураций
+      tags:
+      - configurations
+    post:
+      consumes:
+      - application/json
+      description: Создает новую конфигурацию WireGuard
+      parameters:
+      - description: Данные конфигурации
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/wg_api_internal_models.Configuration'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/wg_api_internal_models.Configuration'
+        "400":
+          description: Ошибка валидации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Создание конфигурации
+      tags:
+      - configurations
+  /configurations/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет конфигурацию WireGuard
+      parameters:
+      - description: ID конфигурации
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Сообщение об успешном удалении
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Некорректный ID конфигурации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Конфигурация не найдена
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Удаление конфигурации
+      tags:
+      - configurations
+    get:
+      consumes:
+      - application/json
+      description: Возвращает информацию о конфигурации WireGuard по её ID
+      parameters:
+      - description: ID конфигурации
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/wg_api_internal_models.Configuration'
+        "400":
+          description: Некорректный ID конфигурации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Конфигурация не найдена
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получение конфигурации по ID
+      tags:
+      - configurations
+    put:
+      consumes:
+      - application/json
+      description: Обновляет существующую конфигурацию WireGuard
+      parameters:
+      - description: ID конфигурации
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновленные данные конфигурации
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/wg_api_internal_models.Configuration'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/wg_api_internal_models.Configuration'
+        "400":
+          description: Некорректный ID конфигурации или данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Конфигурация не найдена
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Обновление конфигурации
+      tags:
+      - configurations
+  /configurations/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Обновляет статус конфигурации WireGuard
+      parameters:
+      - description: ID конфигурации
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новый статус
+        in: body
+        name: status
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Сообщение об успешном обновлении
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Некорректный ID конфигурации или статус
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Конфигурация не найдена
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Обновление статуса конфигурации
+      tags:
+      - configurations
+  /configurations/user/{userId}:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список конфигураций WireGuard для конкретного пользователя
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/wg_api_internal_models.Configuration'
+            type: array
+        "400":
+          description: Некорректный ID пользователя
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получение конфигураций пользователя
+      tags:
+      - configurations
+  /servers:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех WireGuard серверов в системе
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/wg_api_internal_models.Server'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получение списка всех серверов
+      tags:
+      - servers
+    post:
+      consumes:
+      - application/json
+      description: Создает новый WireGuard сервер в системе
+      parameters:
+      - description: Данные сервера
+        in: body
+        name: server
+        required: true
+        schema:
+          $ref: '#/definitions/wg_api_internal_models.Server'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/wg_api_internal_models.Server'
+        "400":
+          description: Ошибка валидации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Создание сервера
+      tags:
+      - servers
+  /servers/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет WireGuard сервер из системы
+      parameters:
+      - description: ID сервера
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Сообщение об успешном удалении
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Некорректный ID сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Удаление сервера
+      tags:
+      - servers
+    get:
+      consumes:
+      - application/json
+      description: Возвращает информацию о WireGuard сервере по его ID
+      parameters:
+      - description: ID сервера
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/wg_api_internal_models.Server'
+        "400":
+          description: Некорректный ID сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Сервер не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получение сервера по ID
+      tags:
+      - servers
+    put:
+      consumes:
+      - application/json
+      description: Обновляет данные существующего WireGuard сервера
+      parameters:
+      - description: ID сервера
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновленные данные сервера
+        in: body
+        name: server
+        required: true
+        schema:
+          $ref: '#/definitions/wg_api_internal_models.Server'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/wg_api_internal_models.Server'
+        "400":
+          description: Некорректный ID сервера или данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Обновление сервера
+      tags:
+      - servers
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех пользователей в системе
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/wg_api_internal_models.User'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получение списка всех пользователей
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Создает нового пользователя в системе
+      parameters:
+      - description: Данные пользователя
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/wg_api_internal_models.User'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/wg_api_internal_models.User'
+        "400":
+          description: Ошибка валидации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Создание пользователя
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет пользователя из системы
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Сообщение об успешном удалении
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Некорректный ID пользователя
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Удаление пользователя
+      tags:
+      - users
+    get:
+      consumes:
+      - application/json
+      description: Возвращает информацию о пользователе по его ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/wg_api_internal_models.User'
+        "400":
+          description: Некорректный ID пользователя
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Пользователь не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получение пользователя по ID
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Обновляет данные существующего пользователя
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновленные данные пользователя
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/wg_api_internal_models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/wg_api_internal_models.User'
+        "400":
+          description: Некорректный ID пользователя или данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Обновление пользователя
+      tags:
+      - users
+swagger: "2.0"
